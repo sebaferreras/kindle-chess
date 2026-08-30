@@ -14,7 +14,7 @@
 <p id="task"></p>
 <p id="status"></p>
 <p class="controls">
-  <a class="icon back" href="training.html" title="Training"></a>
+  <a class="icon back" href="endgames.html" title="Endgames"></a>
   <button id="reset" class="icon reset" title="Restart"></button>
 </p>
 
@@ -29,6 +29,7 @@
   var DONE_KEY = 'kindle-chess-endgames';
   var BOT_DEPTH = 4;
   var BOT_TIME_MS = 1500;
+  var MIN_BOT_DELAY_MS = 1500;
   var GOALS = {
     mate: 'Checkmate within {n} moves',
     promote: 'Promote the pawn within {n} moves',
@@ -43,7 +44,7 @@
   var resetEl = document.getElementById('reset');
   var board = new Board(boardEl, onSquareTap);
   var endgame = findEndgame();
-  var state, humanColor, movesMade, history, result, thinking;
+  var state, humanColor, movesMade, history, result, thinking, initialBotQueens;
 
   function findEndgame() {
     var match = /[?&]id=([\w-]+)/.exec(window.location.search);
@@ -76,6 +77,7 @@
   function start() {
     state = Chess.fromFen(endgame.fen);
     humanColor = state.turn;
+    initialBotQueens = queens(humanColor === 'w' ? 'b' : 'w');
     movesMade = 0;
     history = [];
     result = null;
@@ -142,6 +144,16 @@
     if (success) markDone();
   }
 
+  function queens(color) {
+    var n = 0;
+
+    for (var sq in state.pieces) {
+      if (state.pieces[sq] === color + 'Q') n++;
+    }
+
+    return n;
+  }
+
   function pawnsLeft(color) {
     for (var sq in state.pieces) {
       if (state.pieces[sq] === color + 'P') return true;
@@ -179,18 +191,24 @@
       return true;
     }
 
-    if (endgame.goal === 'promote' && !pawnsLeft(humanColor)) {
-      var promoted = false;
-
-      for (var sq in state.pieces) {
-        if (state.pieces[sq] === humanColor + 'Q') promoted = true;
+    if (endgame.goal === 'promote') {
+      if (queens(humanColor) > 0) {
+        finish(true, 'Promoted!');
+        return true;
       }
 
-      finish(promoted, promoted ? 'Promoted!' : 'You lost the pawn');
+      if (!pawnsLeft(humanColor)) {
+        finish(false, 'You lost the pawn');
+        return true;
+      }
+    }
+
+    if (endgame.goal === 'hold' && queens(botColor) > initialBotQueens) {
+      finish(false, 'The pawn promoted');
       return true;
     }
 
-    if (endgame.goal === 'hold' && !pawnsLeft(botColor)) {
+    if (endgame.goal === 'hold' && initialBotQueens === 0 && !pawnsLeft(botColor)) {
       finish(true, 'Pawn gone — draw held!');
       return true;
     }
@@ -224,14 +242,22 @@
   }
 
   function playBotMove() {
+    var started = Date.now();
     var ranked = Bot.analyze(state, BOT_DEPTH, BOT_TIME_MS);
-    thinking = false;
 
-    if (!ranked.length) return;
+    if (!ranked.length) {
+      thinking = false;
+      return;
+    }
 
-    var choice = ranked[0].move;
-    move(choice.from, choice.to);
-    board.mark([choice.from, choice.to]);
+    var wait = Math.max(0, MIN_BOT_DELAY_MS - (Date.now() - started));
+
+    window.setTimeout(function () {
+      thinking = false;
+      var choice = ranked[0].move;
+      move(choice.from, choice.to);
+      board.mark([choice.from, choice.to]);
+    }, wait);
   }
 
   function ownPiece(square) {

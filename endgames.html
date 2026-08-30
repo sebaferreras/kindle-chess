@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Chess — Endgames</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<h1>Endgames</h1>
+<nav id="endgames" class="menu compact"></nav>
+<p class="controls">
+  <a class="icon back" href="training.html" title="Training"></a>
+</p>
+
+<script src="endgames.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  function load(key) {
+    try {
+      var raw = window.localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  var done = load('kindle-chess-endgames') || {};
+  var html = [];
+
+  for (var i = 0; i < ENDGAMES.length; i++) {
+    var e = ENDGAMES[i];
+    var mark = done[e.id] ? ' ✓' : '';
+    html.push('<a href="endgame.html?id=' + e.id + '">' + e.name + mark + '</a>');
+  }
+
+  document.getElementById('endgames').innerHTML = html.join('');
+})();
+</script>
+</body>
+</html>
