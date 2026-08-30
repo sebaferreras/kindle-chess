@@ -8,6 +8,7 @@
 <body>
 <h1>Statistics</h1>
 <h2>Versus the bot</h2>
+<p id="rating"></p>
 <table id="stats"></table>
 <p id="bot-empty"></p>
 <h2>Puzzles</h2>
@@ -38,6 +39,12 @@
 
     return n;
   }
+
+  var rating = load('kindle-chess-rating');
+
+  document.getElementById('rating').textContent = rating
+    ? 'Rating: ' + rating.rating + ' \u00b7 Peak: ' + rating.peak + ' \u00b7 Rated games: ' + rating.games
+    : 'Play a game to get a rating.';
 
   var stats = load('kindle-chess-stats') || {};
   var rows = ['<tr><th>Level</th><th>Won</th><th>Drawn</th><th>Lost</th></tr>'];
