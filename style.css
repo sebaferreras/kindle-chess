@@ -292,3 +292,8 @@ button.last { background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://w
   font-size: 0.8rem;
   color: #555;
 }
+
+.muted {
+  color: #888;
+  font-size: 1rem;
+}

@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Chess — Endgame</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="board-wrap">
+  <table id="board"></table>
+  <p id="badge" class="hidden"></p>
+  <p id="overlay" class="hidden"></p>
+</div>
+<p id="task"></p>
+<p id="status"></p>
+<p class="controls">
+  <a class="icon back" href="training.html" title="Training"></a>
+  <button id="reset" class="icon reset" title="Restart"></button>
+</p>
+
+<script src="chess.js"></script>
+<script src="bot.js"></script>
+<script src="board.js"></script>
+<script src="endgames.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var DONE_KEY = 'kindle-chess-endgames';
+  var BOT_DEPTH = 4;
+  var BOT_TIME_MS = 1500;
+  var GOALS = {
+    mate: 'Checkmate within {n} moves',
+    promote: 'Promote the pawn within {n} moves',
+    hold: 'Hold the draw for {n} moves'
+  };
+
+  var boardEl = document.getElementById('board');
+  var badgeEl = document.getElementById('badge');
+  var overlayEl = document.getElementById('overlay');
+  var taskEl = document.getElementById('task');
+  var statusEl = document.getElementById('status');
+  var resetEl = document.getElementById('reset');
+  var board = new Board(boardEl, onSquareTap);
+  var endgame = findEndgame();
+  var state, humanColor, movesMade, history, result, thinking;
+
+  function findEndgame() {
+    var match = /[?&]id=([\w-]+)/.exec(window.location.search);
+
+    for (var i = 0; i < ENDGAMES.length; i++) {
+      if (match && ENDGAMES[i].id === match[1]) return ENDGAMES[i];
+    }
+
+    return null;
+  }
+
+  function load() {
+    try {
+      var raw = window.localStorage.getItem(DONE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function markDone() {
+    var done = load();
+    done[endgame.id] = true;
+
+    try {
+      window.localStorage.setItem(DONE_KEY, JSON.stringify(done));
+    } catch (e) {}
+  }
+
+  function start() {
+    state = Chess.fromFen(endgame.fen);
+    humanColor = state.turn;
+    movesMade = 0;
+    history = [];
+    result = null;
+    thinking = false;
+    board.select(null);
+    board.mark([]);
+    board.setFlipped(humanColor === 'b');
+    board.setPosition(state.pieces);
+    setText(overlayEl, '');
+    boardEl.className = '';
+    render();
+  }
+
+  function setText(el, text) {
+    el.textContent = text;
+    el.className = text ? '' : 'hidden';
+  }
+
+  function render() {
+    var goal = GOALS[endgame.goal].replace('{n}', endgame.maxMoves);
+    taskEl.textContent = goal + ' · Move ' + Math.min(movesMade + 1, endgame.maxMoves) + '/' + endgame.maxMoves;
+    renderHistory();
+    renderBadge();
+  }
+
+  function renderBadge() {
+    var badge = '';
+
+    if (thinking) {
+      badge = 'Thinking...';
+    } else if (!result && Chess.status(state) === 'check') {
+      badge = 'Check';
+    }
+
+    setText(badgeEl, badge);
+  }
+
+  function renderHistory() {
+    var pairs = [];
+
+    for (var i = 0; i < history.length; i += 2) {
+      var pair = (i / 2 + 1) + '. ' + history[i];
+
+      if (history[i + 1]) pair += ' ' + history[i + 1];
+
+      pairs.push(pair);
+    }
+
+    statusEl.textContent = pairs.join('  ');
+
+    while (pairs.length > 1 && statusEl.scrollWidth > statusEl.clientWidth + 1) {
+      pairs.shift();
+      statusEl.textContent = '… ' + pairs.join('  ');
+    }
+  }
+
+  function finish(success, message) {
+    result = success ? 'success' : 'failed';
+    board.select(null);
+    setText(overlayEl, message);
+    boardEl.className = 'dimmed';
+    renderBadge();
+
+    if (success) markDone();
+  }
+
+  function pawnsLeft(color) {
+    for (var sq in state.pieces) {
+      if (state.pieces[sq] === color + 'P') return true;
+    }
+
+    return false;
+  }
+
+  function onlyKings() {
+    for (var sq in state.pieces) {
+      if (state.pieces[sq].charAt(1) !== 'K') return false;
+    }
+
+    return true;
+  }
+
+  function checkOutcome() {
+    var status = Chess.status(state);
+    var botColor = humanColor === 'w' ? 'b' : 'w';
+
+    if (status === 'checkmate') {
+      if (state.turn === humanColor) {
+        finish(false, 'You got mated');
+      } else if (endgame.goal === 'hold') {
+        finish(true, 'You even won!');
+      } else {
+        finish(true, 'Checkmate!');
+      }
+
+      return true;
+    }
+
+    if (status === 'stalemate' || onlyKings()) {
+      finish(endgame.goal === 'hold', endgame.goal === 'hold' ? 'Draw held!' : 'Draw — try again');
+      return true;
+    }
+
+    if (endgame.goal === 'promote' && !pawnsLeft(humanColor)) {
+      var promoted = false;
+
+      for (var sq in state.pieces) {
+        if (state.pieces[sq] === humanColor + 'Q') promoted = true;
+      }
+
+      finish(promoted, promoted ? 'Promoted!' : 'You lost the pawn');
+      return true;
+    }
+
+    if (endgame.goal === 'hold' && !pawnsLeft(botColor)) {
+      finish(true, 'Pawn gone — draw held!');
+      return true;
+    }
+
+    if (state.turn === humanColor && movesMade >= endgame.maxMoves) {
+      finish(endgame.goal === 'hold', endgame.goal === 'hold' ? 'Draw held!' : 'Out of moves');
+      return true;
+    }
+
+    return false;
+  }
+
+  function move(from, to) {
+    history.push(Chess.notation(state, from, to));
+    state = Chess.applyMove(state, from, to);
+    board.setPosition(state.pieces);
+
+    if (state.turn === humanColor) movesMade++;
+
+    render();
+
+    return checkOutcome();
+  }
+
+  function scheduleBot() {
+    if (result || state.turn === humanColor) return;
+
+    thinking = true;
+    renderBadge();
+    window.setTimeout(playBotMove, 50);
+  }
+
+  function playBotMove() {
+    var ranked = Bot.analyze(state, BOT_DEPTH, BOT_TIME_MS);
+    thinking = false;
+
+    if (!ranked.length) return;
+
+    var choice = ranked[0].move;
+    move(choice.from, choice.to);
+    board.mark([choice.from, choice.to]);
+  }
+
+  function ownPiece(square) {
+    var piece = state.pieces[square];
+
+    return piece && piece.charAt(0) === state.turn;
+  }
+
+  function onSquareTap(square) {
+    if (thinking || result || state.turn !== humanColor) return;
+
+    var selected = board.selected;
+
+    if (!selected) {
+      if (ownPiece(square)) board.select(square);
+      return;
+    }
+
+    if (square === selected) {
+      board.select(null);
+      return;
+    }
+
+    if (Chess.legalMoves(state, selected).indexOf(square) === -1) {
+      board.select(ownPiece(square) ? square : null);
+      return;
+    }
+
+    board.select(null);
+    board.mark([]);
+
+    if (!move(selected, square)) scheduleBot();
+  }
+
+  resetEl.onclick = function () {
+    if (thinking) return;
+
+    start();
+  };
+
+  if (!endgame) {
+    taskEl.textContent = 'Endgame not found';
+    return;
+  }
+
+  document.title = 'Chess — ' + endgame.name;
+  start();
+  board.fitToScreen();
+  scheduleBot();
+})();
+</script>
+</body>
+</html>
