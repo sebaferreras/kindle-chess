@@ -17,6 +17,8 @@
 <p class="controls">
   <a class="icon back" href="openings.html" title="Openings"></a>
   <button id="reset" class="icon reset" title="Restart"></button>
+  <button id="step" class="icon next" title="Show me"></button>
+  <button id="practice">Practice</button>
   <button id="continue" class="hidden">Keep playing</button>
 </p>
 
@@ -31,6 +33,7 @@
   var DONE_KEY = 'kindle-chess-openings';
   var BOT_LEVEL = 4;
   var REVERT_MS = 1200;
+  var MIN_BOT_DELAY_MS = 1500;
 
   var boardEl = document.getElementById('board');
   var badgeEl = document.getElementById('badge');
@@ -39,6 +42,8 @@
   var statusEl = document.getElementById('status');
   var noteEl = document.getElementById('note');
   var resetEl = document.getElementById('reset');
+  var stepEl = document.getElementById('step');
+  var practiceEl = document.getElementById('practice');
   var continueEl = document.getElementById('continue');
   var board = new Board(boardEl, onSquareTap);
   var opening = findOpening();
@@ -75,12 +80,12 @@
     el.className = text ? '' : 'hidden';
   }
 
-  function start() {
+  function start(newMode) {
     state = Chess.initialPosition();
     humanColor = opening.side;
     step = 0;
     history = [];
-    mode = 'line';
+    mode = newMode;
     locked = false;
     board.select(null);
     board.mark([]);
@@ -89,16 +94,40 @@
     setText(overlayEl, '');
     boardEl.className = '';
     continueEl.className = 'hidden';
+    stepEl.className = mode === 'learn' ? 'icon next' : 'hidden';
+    practiceEl.className = mode === 'learn' ? '' : 'hidden';
     noteEl.textContent = opening.description;
     render();
-    scheduleOpponent();
+
+    if (mode === 'learn' && state.turn === humanColor) {
+      window.setTimeout(showLesson, 800);
+    } else {
+      scheduleOpponent();
+    }
+  }
+
+  function noteFor(index) {
+    var note = opening.notes && opening.notes[index];
+    var san = opening.san[index];
+
+    return note ? san + ' — ' + note : 'Play ' + san;
+  }
+
+  function showLesson() {
+    if (step >= opening.moves.length) return;
+
+    var uci = expectedMove();
+    board.mark([uci.substr(0, 2), uci.substr(2, 2)]);
+    noteEl.textContent = noteFor(step);
   }
 
   function render() {
     var sideName = humanColor === 'w' ? 'White' : 'Black';
 
-    if (mode === 'line') {
-      taskEl.textContent = opening.eco + ' ' + opening.name + ' · Play the main line as ' + sideName;
+    if (mode === 'learn') {
+      taskEl.textContent = opening.eco + ' ' + opening.name + ' · Guided as ' + sideName;
+    } else if (mode === 'line') {
+      taskEl.textContent = opening.eco + ' ' + opening.name + ' · From memory as ' + sideName;
     } else {
       taskEl.textContent = opening.eco + ' ' + opening.name + ' · Playing on vs bot';
     }
@@ -146,11 +175,14 @@
   }
 
   function scheduleOpponent() {
-    if (state.turn === humanColor) return;
+    if (state.turn === humanColor) {
+      if (mode === 'learn') window.setTimeout(showLesson, 600);
+      return;
+    }
 
     locked = true;
 
-    if (mode === 'line') {
+    if (mode === 'learn' || mode === 'line') {
       window.setTimeout(playLineMove, 500);
     } else {
       renderBadge('Thinking...');
@@ -159,27 +191,43 @@
   }
 
   function playLineMove() {
+    var noteIndex = step;
     var uci = expectedMove();
     applyMove(uci.substr(0, 2), uci.substr(2, 2));
     locked = false;
 
-    if (step >= opening.moves.length) completeLine();
+    if (mode === 'learn') noteEl.textContent = noteFor(noteIndex);
+
+    if (step >= opening.moves.length) {
+      completeLine();
+    } else if (mode === 'learn') {
+      scheduleOpponent();
+    }
   }
 
   function playBotMove() {
+    var started = Date.now();
     var choice = Bot.bestMove(state, BOT_LEVEL);
-    applyMove(choice.from, choice.to);
-    locked = false;
-    checkGameOver();
+    var wait = Math.max(0, MIN_BOT_DELAY_MS - (Date.now() - started));
+
+    window.setTimeout(function () {
+      applyMove(choice.from, choice.to);
+      locked = false;
+      renderBadge('');
+      checkGameOver();
+    }, wait);
   }
 
   function completeLine() {
     locked = true;
-    markDone();
+
+    if (mode === 'line') markDone();
+
     setText(overlayEl, 'Line complete!');
     boardEl.className = 'dimmed';
-    noteEl.textContent = opening.description;
+    noteEl.textContent = mode === 'learn' ? 'Now try it from memory with Practice.' : opening.description;
     continueEl.className = '';
+    stepEl.className = 'hidden';
   }
 
   function checkGameOver() {
@@ -225,13 +273,32 @@
 
     board.select(null);
 
-    if (mode === 'line') {
+    if (mode === 'learn') {
+      tryLearnMove(selected, square);
+    } else if (mode === 'line') {
       tryLineMove(selected, square);
     } else {
       applyMove(selected, square);
       checkGameOver();
 
       if (!overlayEl.textContent) scheduleOpponent();
+    }
+  }
+
+  function tryLearnMove(from, to) {
+    var expected = expectedMove();
+
+    if (from + to !== expected) {
+      showLesson();
+      return;
+    }
+
+    applyMove(from, to);
+
+    if (step >= opening.moves.length) {
+      completeLine();
+    } else {
+      scheduleOpponent();
     }
   }
 
@@ -267,6 +334,16 @@
     }, REVERT_MS);
   }
 
+  stepEl.onclick = function () {
+    if (locked || mode !== 'learn' || state.turn !== humanColor || step >= opening.moves.length) return;
+
+    playLineMove();
+  };
+
+  practiceEl.onclick = function () {
+    start('line');
+  };
+
   continueEl.onclick = function () {
     mode = 'free';
     locked = false;
@@ -279,7 +356,7 @@
   };
 
   resetEl.onclick = function () {
-    start();
+    start(mode === 'free' ? 'line' : mode);
   };
 
   if (!opening) {
@@ -288,7 +365,7 @@
   }
 
   document.title = 'Chess — ' + opening.name;
-  start();
+  start(/[?&]mode=practice/.test(window.location.search) ? 'line' : 'learn');
   board.fitToScreen();
 })();
 </script>

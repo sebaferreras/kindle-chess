@@ -26,6 +26,7 @@ ctx.OPENINGS.forEach(function (o) {
   t.check(o.side === 'w' || o.side === 'b', o.id + ': side is w or b');
   t.check(o.moves.length % 2 === 0 || o.side === 'w', o.id + ': line ends after human move or bot reply');
   t.check(!ids[o.id], o.id + ': unique id');
+  t.check(o.notes && o.notes.length === o.san.length, o.id + ': one note per move');
   ids[o.id] = true;
 });
 
