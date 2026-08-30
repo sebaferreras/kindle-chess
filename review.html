@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Chess — Review</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="board-wrap">
+  <table id="board"></table>
+  <p id="badge" class="hidden"></p>
+</div>
+<p id="task"></p>
+<p id="status"></p>
+<p class="controls">
+  <a class="icon back" href="games.html" title="My games"></a>
+  <button id="first" class="icon first" title="Start"></button>
+  <button id="prev" class="icon prev" title="Previous"></button>
+  <button id="next" class="icon next" title="Next"></button>
+  <button id="last" class="icon last" title="End"></button>
+</p>
+
+<script src="chess.js"></script>
+<script src="bot.js"></script>
+<script src="board.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var GAMES_KEY = 'kindle-chess-games';
+  var HUMAN_COLOR = 'w';
+  var ANALYSIS_DEPTH = 3;
+  var ANALYSIS_TIME_MS = 1500;
+  var MATE_SCORE = 100000;
+  var RESULTS = { win: 'You won', loss: 'You lost', draw: 'Draw' };
+
+  var badgeEl = document.getElementById('badge');
+  var taskEl = document.getElementById('task');
+  var statusEl = document.getElementById('status');
+  var buttons = {
+    first: document.getElementById('first'),
+    prev: document.getElementById('prev'),
+    next: document.getElementById('next'),
+    last: document.getElementById('last')
+  };
+  var board = new Board(document.getElementById('board'), null);
+  var games = load() || [];
+  var game = findGame(gameIdFromUrl());
+  var positions = [];
+  var ply = 0;
+  var analyzing = false;
+
+  function load() {
+    try {
+      var raw = window.localStorage.getItem(GAMES_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveGames() {
+    try {
+      window.localStorage.setItem(GAMES_KEY, JSON.stringify(games));
+    } catch (e) {}
+  }
+
+  function gameIdFromUrl() {
+    var match = /[?&]id=(\d+)/.exec(window.location.search);
+
+    return match ? parseInt(match[1], 10) : null;
+  }
+
+  function findGame(id) {
+    for (var i = 0; i < games.length; i++) {
+      if (games[i].id === id) return games[i];
+    }
+
+    return null;
+  }
+
+  function buildPositions() {
+    var state = Chess.initialPosition();
+    positions.push(state);
+
+    for (var i = 0; i < game.uci.length; i++) {
+      state = Chess.applyMove(state, game.uci[i].substr(0, 2), game.uci[i].substr(2, 2));
+      positions.push(state);
+    }
+  }
+
+  function setText(el, text) {
+    el.textContent = text;
+    el.className = text ? '' : 'hidden';
+  }
+
+  function goTo(target) {
+    if (analyzing) return;
+
+    ply = Math.max(0, Math.min(game.uci.length, target));
+    render();
+  }
+
+  function render() {
+    board.setPosition(positions[ply].pieces);
+    renderMoveMarks();
+    renderHistory();
+    renderButtons();
+    renderVerdict();
+  }
+
+  function renderMoveMarks() {
+    if (ply === 0) {
+      board.select(null);
+      board.mark([]);
+      return;
+    }
+
+    var uci = game.uci[ply - 1];
+    board.select(uci.substr(2, 2));
+    board.mark([uci.substr(0, 2)]);
+  }
+
+  function renderButtons() {
+    buttons.first.disabled = ply === 0 || analyzing;
+    buttons.prev.disabled = ply === 0 || analyzing;
+    buttons.next.disabled = ply === game.uci.length || analyzing;
+    buttons.last.disabled = ply === game.uci.length || analyzing;
+  }
+
+  function renderHistory() {
+    var pairs = [];
+
+    for (var i = 0; i < game.history.length; i += 2) {
+      var pair = (i / 2 + 1) + '. ' + moveText(i);
+
+      if (game.history[i + 1]) pair += ' ' + moveText(i + 1);
+
+      pairs.push(pair);
+    }
+
+    var currentPair = Math.max(0, Math.ceil(ply / 2) - 1);
+    var first = 0;
+    statusEl.textContent = pairs.join('  ');
+
+    while (first < currentPair && overflows(statusEl)) {
+      first++;
+      statusEl.textContent = '… ' + pairs.slice(first).join('  ');
+    }
+  }
+
+  function moveText(index) {
+    var text = game.history[index];
+
+    return index === ply - 1 ? '[' + text + ']' : text;
+  }
+
+  function overflows(el) {
+    return el.scrollWidth > el.clientWidth + 1;
+  }
+
+  function renderVerdict() {
+    if (ply === 0) {
+      taskEl.textContent = 'Starting position';
+      setText(badgeEl, '');
+      return;
+    }
+
+    var finished = ply === game.uci.length;
+    setText(badgeEl, finished ? RESULTS[game.result] : '');
+
+    var moveIndex = ply - 1;
+    var mover = positions[moveIndex].turn;
+
+    if (mover !== HUMAN_COLOR) {
+      taskEl.textContent = 'Bot move';
+      return;
+    }
+
+    var cached = game.analysis[moveIndex];
+
+    if (cached) {
+      showVerdict(cached, moveIndex);
+      return;
+    }
+
+    analyzing = true;
+    taskEl.textContent = '';
+    setText(badgeEl, 'Analyzing...');
+    renderButtons();
+    window.setTimeout(function () {
+      analyzeMove(moveIndex);
+    }, 50);
+  }
+
+  function analyzeMove(moveIndex) {
+    var before = positions[moveIndex];
+    var played = game.uci[moveIndex];
+    var ranked = Bot.analyze(before, ANALYSIS_DEPTH, ANALYSIS_TIME_MS);
+    var verdict = verdictFor(ranked, played);
+
+    game.analysis[moveIndex] = verdict;
+    saveGames();
+    analyzing = false;
+    setText(badgeEl, ply === game.uci.length ? RESULTS[game.result] : '');
+    renderButtons();
+
+    if (ply - 1 === moveIndex) showVerdict(verdict, moveIndex);
+  }
+
+  function verdictFor(ranked, played) {
+    var best = ranked[0];
+    var actualScore = null;
+
+    for (var i = 0; i < ranked.length; i++) {
+      if (ranked[i].move.from + ranked[i].move.to === played) actualScore = ranked[i].score;
+    }
+
+    if (actualScore === null) actualScore = best.score;
+
+    var loss = best.score - actualScore;
+    var onlyMove = ranked.length > 1 && best.score - ranked[1].score >= 150;
+    var label;
+
+    if (actualScore >= MATE_SCORE) {
+      label = 'Brilliant';
+    } else if (loss <= 15) {
+      label = onlyMove ? 'Brilliant' : 'Good';
+    } else if (loss <= 50) {
+      label = 'Inaccuracy';
+    } else if (loss <= 150) {
+      label = 'Mistake';
+    } else {
+      label = 'Blunder';
+    }
+
+    return { label: label, loss: loss, best: best.move.from + best.move.to };
+  }
+
+  function showVerdict(verdict, moveIndex) {
+    var played = game.uci[moveIndex];
+    var before = positions[moveIndex];
+    var text = verdict.label;
+
+    if (verdict.loss > 15) text += ' (' + formatLoss(verdict.loss) + ')';
+
+    if (verdict.best === played) {
+      text += ' · Best move';
+      board.mark([played.substr(0, 2)]);
+    } else {
+      text += ' · Best: ' + Chess.notation(before, verdict.best.substr(0, 2), verdict.best.substr(2, 2));
+      board.mark([played.substr(0, 2), verdict.best.substr(0, 2), verdict.best.substr(2, 2)]);
+    }
+
+    taskEl.textContent = text;
+  }
+
+  function formatLoss(loss) {
+    if (loss >= MATE_SCORE / 2) return 'missed mate';
+
+    return '−' + (loss / 100).toFixed(1);
+  }
+
+  if (!game) {
+    taskEl.textContent = 'Game not found';
+    return;
+  }
+
+  buildPositions();
+  buttons.first.onclick = function () { goTo(0); };
+  buttons.prev.onclick = function () { goTo(ply - 1); };
+  buttons.next.onclick = function () { goTo(ply + 1); };
+  buttons.last.onclick = function () { goTo(game.uci.length); };
+  render();
+  board.fitToScreen();
+})();
+</script>
+</body>
+</html>

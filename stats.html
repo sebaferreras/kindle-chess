@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Chess — Statistics</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<h1>Statistics</h1>
+<h2>Versus the bot</h2>
+<table id="stats"></table>
+<p id="bot-empty"></p>
+<h2>Puzzles</h2>
+<p id="puzzles"></p>
+<p class="controls">
+  <a class="icon back" href="index.html" title="Menu"></a>
+</p>
+
+<script>
+(function () {
+  'use strict';
+
+  function load(key) {
+    try {
+      var raw = window.localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function count(obj) {
+    var n = 0;
+
+    for (var k in obj) {
+      n++;
+    }
+
+    return n;
+  }
+
+  var stats = load('kindle-chess-stats') || {};
+  var rows = ['<tr><th>Level</th><th>Won</th><th>Drawn</th><th>Lost</th></tr>'];
+
+  for (var level = 1; level <= 8; level++) {
+    var s = stats[level];
+
+    if (!s) continue;
+
+    rows.push('<tr><td>' + level + '</td><td>' + s.win + '</td><td>' + s.draw + '</td><td>' + s.loss + '</td></tr>');
+  }
+
+  if (rows.length > 1) {
+    document.getElementById('stats').innerHTML = rows.join('');
+  } else {
+    document.getElementById('bot-empty').textContent = 'No games played yet.';
+  }
+
+  var progress = load('kindle-chess-puzzles');
+
+  document.getElementById('puzzles').textContent = progress
+    ? 'Rating: ' + progress.rating + ' · Solved: ' + count(progress.solved) + ' · Failed: ' + count(progress.failed)
+    : 'No puzzles solved yet.';
+})();
+</script>
+</body>
+</html>

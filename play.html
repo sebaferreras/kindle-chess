@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Chess — Bot</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="board-wrap">
+  <table id="board"></table>
+  <p id="badge" class="hidden"></p>
+  <p id="overlay" class="hidden"></p>
+</div>
+<p id="status"></p>
+<p class="controls">
+  <a class="icon back" href="index.html" title="Menu"></a>
+  <select id="level" title="Level">
+    <option value="1">1</option>
+    <option value="2">2</option>
+    <option value="3" selected>3</option>
+    <option value="4">4</option>
+    <option value="5">5</option>
+    <option value="6">6</option>
+    <option value="7">7</option>
+    <option value="8">8</option>
+  </select>
+  <button id="draw" class="icon draw" title="Offer draw"></button>
+  <button id="resign" class="icon resign" title="Resign"></button>
+  <button id="reset" class="icon reset" title="New game"></button>
+</p>
+
+<script src="chess.js"></script>
+<script src="bot.js"></script>
+<script src="board.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var GAME_KEY = 'kindle-chess-game-v3';
+  var STATS_KEY = 'kindle-chess-stats';
+  var GAMES_KEY = 'kindle-chess-games';
+  var MAX_GAMES = 50;
+  var MESSAGES = { check: 'Check', win: 'You won', loss: 'You lost', draw: 'Draw' };
+  var BOT_COLOR = 'b';
+  var HUMAN_COLOR = 'w';
+
+  var badgeEl = document.getElementById('badge');
+  var overlayEl = document.getElementById('overlay');
+  var boardEl = document.getElementById('board');
+  var statusEl = document.getElementById('status');
+  var levelEl = document.getElementById('level');
+  var drawEl = document.getElementById('draw');
+  var resignEl = document.getElementById('resign');
+  var resetEl = document.getElementById('reset');
+  var board = new Board(boardEl, onSquareTap);
+  var game = load(GAME_KEY) || newGame();
+
+  if (!game.history) game.history = [];
+
+  if (!game.uci) game.uci = [];
+  var stats = load(STATS_KEY) || {};
+  var thinking = false;
+
+  function newGame() {
+    return { state: Chess.initialPosition(), level: parseInt(levelEl.value, 10), moves: 0, result: null, history: [], uci: [] };
+  }
+
+  function load(key) {
+    try {
+      var raw = window.localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function save(key, value) {
+    try {
+      window.localStorage.setItem(key, JSON.stringify(value));
+    } catch (e) {}
+  }
+
+  function renderControls() {
+    var over = !!game.result;
+
+    levelEl.value = String(game.level);
+    levelEl.disabled = game.moves > 0 || over;
+    drawEl.disabled = over || thinking;
+    resignEl.disabled = over || thinking;
+    renderStatus();
+  }
+
+  function renderStatus() {
+    var badge = '';
+
+    if (thinking) {
+      badge = 'Thinking...';
+    } else if (!game.result && Chess.status(game.state) === 'check') {
+      badge = MESSAGES.check;
+    }
+
+    setText(badgeEl, badge);
+    setText(overlayEl, game.result ? MESSAGES[game.result] : '');
+    boardEl.className = game.result ? 'dimmed' : '';
+  }
+
+  function renderHistory() {
+    var history = game.history || [];
+    var pairs = [];
+
+    for (var i = 0; i < history.length; i += 2) {
+      var pair = (i / 2 + 1) + '. ' + history[i];
+
+      if (history[i + 1]) pair += ' ' + history[i + 1];
+
+      pairs.push(pair);
+    }
+
+    statusEl.textContent = pairs.join('  ');
+
+    while (pairs.length > 1 && overflows(statusEl)) {
+      pairs.shift();
+      statusEl.textContent = '\u2026 ' + pairs.join('  ');
+    }
+  }
+
+  function overflows(el) {
+    return el.scrollWidth > el.clientWidth + 1;
+  }
+
+  function setText(el, text) {
+    el.textContent = text;
+    el.className = text ? '' : 'hidden';
+  }
+
+  function finish(result) {
+    game.result = result;
+    var entry = stats[game.level] || { win: 0, draw: 0, loss: 0 };
+    entry[result]++;
+    stats[game.level] = entry;
+    save(STATS_KEY, stats);
+    save(GAME_KEY, game);
+    archiveGame();
+    board.select(null);
+    renderControls();
+  }
+
+  function archiveGame() {
+    if (!game.uci.length) return;
+
+    var games = load(GAMES_KEY) || [];
+
+    games.push({
+      id: Date.now(),
+      date: new Date().toISOString(),
+      level: game.level,
+      result: game.result,
+      uci: game.uci,
+      history: game.history,
+      analysis: {}
+    });
+
+    while (games.length > MAX_GAMES) {
+      games.shift();
+    }
+
+    save(GAMES_KEY, games);
+  }
+
+  function resultFromBoard() {
+    var status = Chess.status(game.state);
+
+    if (status === 'stalemate') return 'draw';
+
+    if (status === 'checkmate') return game.state.turn === HUMAN_COLOR ? 'loss' : 'win';
+
+    return null;
+  }
+
+  function move(from, to) {
+    game.history.push(Chess.notation(game.state, from, to));
+    game.uci.push(from + to);
+    game.state = Chess.applyMove(game.state, from, to);
+    game.moves++;
+    renderHistory();
+    board.setPosition(game.state.pieces);
+    save(GAME_KEY, game);
+
+    var result = resultFromBoard();
+
+    if (result) {
+      finish(result);
+    } else {
+      renderControls();
+    }
+  }
+
+  function scheduleBot() {
+    if (game.result || game.state.turn !== BOT_COLOR) return;
+
+    thinking = true;
+    renderControls();
+    window.setTimeout(playBotMove, 50);
+  }
+
+  function playBotMove() {
+    var choice = Bot.bestMove(game.state, game.level);
+    thinking = false;
+    move(choice.from, choice.to);
+    board.mark([choice.from, choice.to]);
+  }
+
+  function ownPiece(square) {
+    var piece = game.state.pieces[square];
+
+    return piece && piece.charAt(0) === game.state.turn;
+  }
+
+  function onSquareTap(square) {
+    if (thinking || game.result) return;
+
+    var selected = board.selected;
+
+    if (!selected) {
+      if (ownPiece(square)) board.select(square);
+      return;
+    }
+
+    if (square === selected) {
+      board.select(null);
+      return;
+    }
+
+    if (Chess.legalMoves(game.state, selected).indexOf(square) === -1) {
+      board.select(ownPiece(square) ? square : null);
+      return;
+    }
+
+    board.select(null);
+    board.mark([]);
+    move(selected, square);
+    scheduleBot();
+  }
+
+  levelEl.onchange = function () {
+    game.level = parseInt(levelEl.value, 10);
+    save(GAME_KEY, game);
+  };
+
+  drawEl.onclick = function () {
+    if (thinking || game.result) return;
+
+    if (Bot.acceptsDraw(game.state, BOT_COLOR)) {
+      finish('draw');
+    } else {
+      setText(badgeEl, 'The bot declines the draw');
+    }
+  };
+
+  resignEl.onclick = function () {
+    if (thinking || game.result) return;
+
+    finish('loss');
+  };
+
+  resetEl.onclick = function () {
+    if (thinking) return;
+
+    board.select(null);
+    board.mark([]);
+    game = newGame();
+    save(GAME_KEY, game);
+    board.setPosition(game.state.pieces);
+    renderControls();
+    renderHistory();
+  };
+
+  board.setPosition(game.state.pieces);
+  renderControls();
+  renderHistory();
+  board.fitToScreen();
+  scheduleBot();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Chess — Puzzles</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<table id="board"></table>
+<p id="task"></p>
+<p id="status"></p>
+<p class="controls">
+  <a class="icon back" href="index.html" title="Menu"></a>
+  <button id="solution">Show solution</button>
+  <button id="next">Next</button>
+</p>
+
+<script src="chess.js"></script>
+<script src="board.js"></script>
+<script src="puzzles.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var PROGRESS_KEY = 'kindle-chess-puzzles';
+  var START_RATING = 1200;
+  var RANGE = 150;
+  var THEME_NAMES = {
+    mate: 'mate', mateIn1: 'mate in 1', mateIn2: 'mate in 2', mateIn3: 'mate in 3', mateIn4: 'mate in 4',
+    fork: 'fork', pin: 'pin', skewer: 'skewer', discoveredAttack: 'discovered attack',
+    discoveredCheck: 'discovered check', hangingPiece: 'hanging piece', trappedPiece: 'trapped piece',
+    sacrifice: 'sacrifice', deflection: 'deflection', attraction: 'attraction', clearance: 'clearance',
+    intermezzo: 'intermezzo', quietMove: 'quiet move', defensiveMove: 'defensive move',
+    advancedPawn: 'advanced pawn', promotion: 'promotion', exposedKing: 'exposed king',
+    kingsideAttack: 'kingside attack', queensideAttack: 'queenside attack',
+    rookEndgame: 'rook endgame', pawnEndgame: 'pawn endgame', queenEndgame: 'queen endgame',
+    bishopEndgame: 'bishop endgame', knightEndgame: 'knight endgame', queenRookEndgame: 'queen and rook endgame',
+    backRankMate: 'back rank mate', smotheredMate: 'smothered mate', doubleCheck: 'double check',
+    zugzwang: 'zugzwang', crushing: 'crushing advantage', advantage: 'advantage', equality: 'equality',
+    capturingDefender: 'capturing the defender', interference: 'interference', xRayAttack: 'x-ray attack',
+    enPassant: 'en passant', castling: 'castling', underPromotion: 'underpromotion', arabianMate: 'Arabian mate',
+    anastasiaMate: "Anastasia's mate", bodenMate: "Boden's mate", hookMate: 'hook mate',
+    dovetailMate: 'dovetail mate', doubleBishopMate: 'double bishop mate'
+  };
+
+  var taskEl = document.getElementById('task');
+  var statusEl = document.getElementById('status');
+  var solutionEl = document.getElementById('solution');
+  var nextEl = document.getElementById('next');
+  var board = new Board(document.getElementById('board'), onSquareTap);
+  var progress = load() || { rating: START_RATING, solved: {}, failed: {}, current: null };
+  var puzzle, state, solution, step, failedThisPuzzle, sawSolution, locked;
+
+  function load() {
+    try {
+      var raw = window.localStorage.getItem(PROGRESS_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function save() {
+    try {
+      window.localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
+    } catch (e) {}
+  }
+
+  function findById(id) {
+    for (var i = 0; i < PUZZLES.length; i++) {
+      if (PUZZLES[i].id === id) return PUZZLES[i];
+    }
+
+    return null;
+  }
+
+  function currentOrNewPuzzle() {
+    var current = progress.current && findById(progress.current);
+
+    return current || pickPuzzle();
+  }
+
+  function pickPuzzle() {
+    var candidates = [];
+
+    for (var i = 0; i < PUZZLES.length; i++) {
+      var p = PUZZLES[i];
+      var fresh = !progress.solved[p.id] && !progress.failed[p.id];
+
+      if (fresh && Math.abs(p.rating - progress.rating) <= RANGE) candidates.push(p);
+    }
+
+    if (!candidates.length) candidates = PUZZLES;
+
+    return candidates[Math.floor(Math.random() * candidates.length)];
+  }
+
+  var GENERIC_THEMES = ['mate', 'crushing', 'advantage', 'equality'];
+
+  function themeLabel(themes) {
+    var specific = [];
+    var generic = [];
+
+    for (var i = 0; i < themes.length; i++) {
+      var name = THEME_NAMES[themes[i]] || themes[i];
+
+      if (GENERIC_THEMES.indexOf(themes[i]) === -1) {
+        specific.push(capitalize(name));
+      } else {
+        generic.push(capitalize(name));
+      }
+    }
+
+    var chosen = specific.length ? specific : generic;
+
+    return chosen.slice(0, 2).join(' · ');
+  }
+
+  function capitalize(text) {
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  }
+
+  function startPuzzle(p) {
+    puzzle = p;
+    progress.current = p.id;
+    save();
+    state = Chess.fromFen(p.fen);
+    solution = p.moves.split(' ');
+    step = 0;
+    failedThisPuzzle = false;
+    sawSolution = false;
+    locked = true;
+    board.select(null);
+    board.mark([]);
+    board.setFlipped(state.turn === 'w');
+    board.setPosition(state.pieces);
+    showInfo();
+    solutionEl.disabled = false;
+    nextEl.disabled = false;
+    window.setTimeout(playOpponentMove, 600);
+  }
+
+  function playOpponentMove() {
+    var uci = solution[step];
+    state = Chess.applyMove(state, uci.substr(0, 2), uci.substr(2, 2));
+    step++;
+    board.setPosition(state.pieces);
+    board.mark([uci.substr(0, 2), uci.substr(2, 2)]);
+    locked = false;
+  }
+
+  function ownPiece(square) {
+    var piece = state.pieces[square];
+
+    return piece && piece.charAt(0) === state.turn;
+  }
+
+  function onSquareTap(square) {
+    if (locked) return;
+
+    var selected = board.selected;
+
+    if (!selected) {
+      if (ownPiece(square)) board.select(square);
+      return;
+    }
+
+    if (square === selected) {
+      board.select(null);
+      return;
+    }
+
+    if (Chess.legalMoves(state, selected).indexOf(square) === -1) {
+      board.select(ownPiece(square) ? square : null);
+      return;
+    }
+
+    board.select(null);
+    tryMove(selected, square);
+  }
+
+  function tryMove(from, to) {
+    var expected = solution[step].substr(0, 4);
+
+    if (from + to !== expected) {
+      fail(from, to);
+      return;
+    }
+
+    state = Chess.applyMove(state, from, to);
+    step++;
+    board.mark([]);
+    board.setPosition(state.pieces);
+
+    if (step >= solution.length) {
+      succeed();
+    } else {
+      locked = true;
+      window.setTimeout(playOpponentMove, 500);
+    }
+  }
+
+  function fail(from, to) {
+    locked = true;
+
+    if (!failedThisPuzzle && !sawSolution) {
+      failedThisPuzzle = true;
+      progress.failed[puzzle.id] = true;
+      adjustRating(false);
+    }
+
+    board.setPosition(Chess.applyMove(state, from, to).pieces);
+    board.mark([from, to]);
+    statusEl.textContent = 'Incorrect · Your rating: ' + progress.rating;
+    window.setTimeout(undoWrongMove, 1200);
+  }
+
+  function undoWrongMove() {
+    board.setPosition(state.pieces);
+    board.mark([]);
+    statusEl.textContent = 'Try again · Your rating: ' + progress.rating;
+    locked = false;
+  }
+
+  function succeed() {
+    locked = true;
+    solutionEl.disabled = true;
+
+    if (!failedThisPuzzle && !sawSolution) {
+      progress.solved[puzzle.id] = true;
+      adjustRating(true);
+    }
+
+    progress.current = null;
+    save();
+    statusEl.textContent = (sawSolution ? 'Correct (with help)' : 'Correct') + ' · Your rating: ' + progress.rating;
+  }
+
+  function showInfo() {
+    var side = state.turn === 'w' ? 'Black' : 'White';
+    taskEl.textContent = side + ' to play · ' + themeLabel(puzzle.themes);
+    statusEl.textContent = 'Puzzle ' + puzzle.rating + ' · Your rating: ' + progress.rating;
+  }
+
+  function adjustRating(won) {
+    var expected = 1 / (1 + Math.pow(10, (puzzle.rating - progress.rating) / 400));
+    progress.rating = Math.round(progress.rating + 32 * ((won ? 1 : 0) - expected));
+    save();
+  }
+
+  solutionEl.onclick = function () {
+    sawSolution = true;
+    solutionEl.disabled = true;
+    statusEl.textContent = 'Solution: ' + solutionText();
+  };
+
+  function solutionText() {
+    var s = Chess.fromFen(puzzle.fen);
+    var parts = [];
+
+    for (var i = 1; i < solution.length; i++) {
+      var from = solution[i].substr(0, 2);
+      var to = solution[i].substr(2, 2);
+      var text = Chess.notation(s, from, to);
+      s = Chess.applyMove(s, from, to);
+      parts.push(i % 2 === 1 ? text : '(' + text + ')');
+    }
+
+    return parts.join(' ');
+  }
+
+  nextEl.onclick = function () {
+    startPuzzle(pickPuzzle());
+  };
+
+  startPuzzle(currentOrNewPuzzle());
+  board.fitToScreen();
+})();
+</script>
+</body>
+</html>

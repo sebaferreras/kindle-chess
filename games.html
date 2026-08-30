@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Chess — My games</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<h1>My games</h1>
+<table id="games"></table>
+<p id="games-empty"></p>
+<p class="controls">
+  <a class="icon back" href="index.html" title="Menu"></a>
+</p>
+
+<script>
+(function () {
+  'use strict';
+
+  var RESULTS = { win: 'Won', loss: 'Lost', draw: 'Draw' };
+
+  function load(key) {
+    try {
+      var raw = window.localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function pad(n) {
+    return n < 10 ? '0' + n : String(n);
+  }
+
+  function formatDate(iso) {
+    var d = new Date(iso);
+
+    return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  function cell(gameId, text) {
+    return '<td><a href="review.html?id=' + gameId + '">' + text + '</a></td>';
+  }
+
+  var games = load('kindle-chess-games') || [];
+
+  if (!games.length) {
+    document.getElementById('games-empty').textContent = 'No finished games yet.';
+    return;
+  }
+
+  var rows = ['<tr><th>Date</th><th>Level</th><th>Result</th><th>Moves</th></tr>'];
+
+  for (var i = games.length - 1; i >= 0; i--) {
+    var g = games[i];
+    var moves = Math.ceil(g.uci.length / 2);
+    rows.push('<tr>' + cell(g.id, formatDate(g.date)) + cell(g.id, g.level) + cell(g.id, RESULTS[g.result]) + cell(g.id, moves) + '</tr>');
+  }
+
+  document.getElementById('games').innerHTML = rows.join('');
+})();
+</script>
+</body>
+</html>
