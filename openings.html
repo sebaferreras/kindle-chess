@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Chess — Openings</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<h1>Openings</h1>
+<h2>As White</h2>
+<nav id="white" class="menu compact"></nav>
+<h2>As Black</h2>
+<nav id="black" class="menu compact"></nav>
+<p class="controls">
+  <a class="icon back" href="training.html" title="Training"></a>
+</p>
+
+<script src="openings.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  function load(key) {
+    try {
+      var raw = window.localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  var done = load('kindle-chess-openings') || {};
+  var html = { w: [], b: [] };
+
+  for (var i = 0; i < OPENINGS.length; i++) {
+    var o = OPENINGS[i];
+    var mark = done[o.id] ? ' ✓' : '';
+    html[o.side].push('<a href="opening.html?id=' + o.id + '"><span class="eco">' + o.eco + '</span> ' + o.name + mark + '</a>');
+  }
+
+  document.getElementById('white').innerHTML = html.w.join('');
+  document.getElementById('black').innerHTML = html.b.join('');
+})();
+</script>
+</body>
+</html>

@@ -10,7 +10,7 @@ Live: https://sebaferreras.github.io/kindle-chess/
 - `play.html` — play against the bot (levels 1–8, offer draw, resign)
 - `puzzles.html` — tactical puzzles with your own puzzle rating
 - `games.html` — finished games, opening each one in a move-by-move review with verdicts
-- `training.html` — endgame training: curated positions with a goal, the bot defends
+- `training.html` — training hub: endgames (curated positions with a goal) and opening lines to practice
 - `stats.html` — results per level and puzzle progress
 
 ## Modules
@@ -20,6 +20,7 @@ Live: https://sebaferreras.github.io/kindle-chess/
 - `board.js` — shared board (rendering, selection, orientation, move markers)
 - `puzzles.js` — 2123 puzzles sampled from the Lichess CC0 database (rating 600–2400)
 - `endgames.js` — endgame training positions (FEN, goal, move limit)
+- `openings.js` — opening main lines (ECO codes from the CC0 lichess-org/chess-openings database)
 - `style.css` — e-ink friendly styles: no animations, high contrast, no flexbox/grid
 
 ## Run locally
@@ -47,4 +48,5 @@ The code is MIT licensed (see `LICENSE`). Third-party material:
 
 - **Pieces**: "Cburnett" set from [Wikimedia Commons](https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces), by Colin M.L. Burnett, licensed [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/). Embedded as SVG in `style.css`.
 - **Puzzles**: [Lichess puzzle database](https://database.lichess.org/#puzzles), CC0.
+- **Opening names and ECO codes**: [lichess-org/chess-openings](https://github.com/lichess-org/chess-openings), CC0.
 - **Bot evaluation tables**: values from the "Simplified Evaluation Function" on the [Chess Programming Wiki](https://www.chessprogramming.org/Simplified_Evaluation_Function).

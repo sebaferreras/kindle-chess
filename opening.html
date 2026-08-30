@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Chess — Opening</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="board-wrap">
+  <table id="board"></table>
+  <p id="badge" class="hidden"></p>
+  <p id="overlay" class="hidden"></p>
+</div>
+<p id="task"></p>
+<p id="status"></p>
+<p id="note"></p>
+<p class="controls">
+  <a class="icon back" href="openings.html" title="Openings"></a>
+  <button id="reset" class="icon reset" title="Restart"></button>
+  <button id="continue" class="hidden">Keep playing</button>
+</p>
+
+<script src="chess.js"></script>
+<script src="bot.js"></script>
+<script src="board.js"></script>
+<script src="openings.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var DONE_KEY = 'kindle-chess-openings';
+  var BOT_LEVEL = 4;
+  var REVERT_MS = 1200;
+
+  var boardEl = document.getElementById('board');
+  var badgeEl = document.getElementById('badge');
+  var overlayEl = document.getElementById('overlay');
+  var taskEl = document.getElementById('task');
+  var statusEl = document.getElementById('status');
+  var noteEl = document.getElementById('note');
+  var resetEl = document.getElementById('reset');
+  var continueEl = document.getElementById('continue');
+  var board = new Board(boardEl, onSquareTap);
+  var opening = findOpening();
+  var state, humanColor, step, history, mode, locked;
+
+  function findOpening() {
+    var match = /[?&]id=([\w-]+)/.exec(window.location.search);
+
+    for (var i = 0; i < OPENINGS.length; i++) {
+      if (match && OPENINGS[i].id === match[1]) return OPENINGS[i];
+    }
+
+    return null;
+  }
+
+  function markDone() {
+    var done;
+
+    try {
+      done = JSON.parse(window.localStorage.getItem(DONE_KEY)) || {};
+    } catch (e) {
+      done = {};
+    }
+
+    done[opening.id] = true;
+
+    try {
+      window.localStorage.setItem(DONE_KEY, JSON.stringify(done));
+    } catch (e) {}
+  }
+
+  function setText(el, text) {
+    el.textContent = text;
+    el.className = text ? '' : 'hidden';
+  }
+
+  function start() {
+    state = Chess.initialPosition();
+    humanColor = opening.side;
+    step = 0;
+    history = [];
+    mode = 'line';
+    locked = false;
+    board.select(null);
+    board.mark([]);
+    board.setFlipped(humanColor === 'b');
+    board.setPosition(state.pieces);
+    setText(overlayEl, '');
+    boardEl.className = '';
+    continueEl.className = 'hidden';
+    noteEl.textContent = opening.description;
+    render();
+    scheduleOpponent();
+  }
+
+  function render() {
+    var sideName = humanColor === 'w' ? 'White' : 'Black';
+
+    if (mode === 'line') {
+      taskEl.textContent = opening.eco + ' ' + opening.name + ' · Play the main line as ' + sideName;
+    } else {
+      taskEl.textContent = opening.eco + ' ' + opening.name + ' · Playing on vs bot';
+    }
+
+    renderHistory();
+    renderBadge('');
+  }
+
+  function renderBadge(text) {
+    if (!text && Chess.status(state) === 'check') text = 'Check';
+
+    setText(badgeEl, text);
+  }
+
+  function renderHistory() {
+    var pairs = [];
+
+    for (var i = 0; i < history.length; i += 2) {
+      var pair = (i / 2 + 1) + '. ' + history[i];
+
+      if (history[i + 1]) pair += ' ' + history[i + 1];
+
+      pairs.push(pair);
+    }
+
+    statusEl.textContent = pairs.join('  ');
+
+    while (pairs.length > 1 && statusEl.scrollWidth > statusEl.clientWidth + 1) {
+      pairs.shift();
+      statusEl.textContent = '… ' + pairs.join('  ');
+    }
+  }
+
+  function applyMove(from, to) {
+    history.push(Chess.notation(state, from, to));
+    state = Chess.applyMove(state, from, to);
+    step++;
+    board.setPosition(state.pieces);
+    board.mark([from, to]);
+    render();
+  }
+
+  function expectedMove() {
+    return opening.moves[step];
+  }
+
+  function scheduleOpponent() {
+    if (state.turn === humanColor) return;
+
+    locked = true;
+
+    if (mode === 'line') {
+      window.setTimeout(playLineMove, 500);
+    } else {
+      renderBadge('Thinking...');
+      window.setTimeout(playBotMove, 50);
+    }
+  }
+
+  function playLineMove() {
+    var uci = expectedMove();
+    applyMove(uci.substr(0, 2), uci.substr(2, 2));
+    locked = false;
+
+    if (step >= opening.moves.length) completeLine();
+  }
+
+  function playBotMove() {
+    var choice = Bot.bestMove(state, BOT_LEVEL);
+    applyMove(choice.from, choice.to);
+    locked = false;
+    checkGameOver();
+  }
+
+  function completeLine() {
+    locked = true;
+    markDone();
+    setText(overlayEl, 'Line complete!');
+    boardEl.className = 'dimmed';
+    noteEl.textContent = opening.description;
+    continueEl.className = '';
+  }
+
+  function checkGameOver() {
+    var status = Chess.status(state);
+
+    if (status !== 'checkmate' && status !== 'stalemate') return;
+
+    locked = true;
+    boardEl.className = 'dimmed';
+
+    if (status === 'stalemate') {
+      setText(overlayEl, 'Draw');
+    } else {
+      setText(overlayEl, state.turn === humanColor ? 'You lost' : 'You won');
+    }
+  }
+
+  function ownPiece(square) {
+    var piece = state.pieces[square];
+
+    return piece && piece.charAt(0) === state.turn;
+  }
+
+  function onSquareTap(square) {
+    if (locked || state.turn !== humanColor) return;
+
+    var selected = board.selected;
+
+    if (!selected) {
+      if (ownPiece(square)) board.select(square);
+      return;
+    }
+
+    if (square === selected) {
+      board.select(null);
+      return;
+    }
+
+    if (Chess.legalMoves(state, selected).indexOf(square) === -1) {
+      board.select(ownPiece(square) ? square : null);
+      return;
+    }
+
+    board.select(null);
+
+    if (mode === 'line') {
+      tryLineMove(selected, square);
+    } else {
+      applyMove(selected, square);
+      checkGameOver();
+
+      if (!overlayEl.textContent) scheduleOpponent();
+    }
+  }
+
+  function tryLineMove(from, to) {
+    var expected = expectedMove();
+
+    if (from + to !== expected) {
+      showWrongMove(from, to, expected);
+      return;
+    }
+
+    noteEl.textContent = '';
+    applyMove(from, to);
+
+    if (step >= opening.moves.length) {
+      completeLine();
+    } else {
+      scheduleOpponent();
+    }
+  }
+
+  function showWrongMove(from, to, expected) {
+    locked = true;
+    board.setPosition(Chess.applyMove(state, from, to).pieces);
+    board.mark([from, to]);
+    renderBadge('Not the main line');
+    noteEl.textContent = 'Expected: ' + Chess.notation(state, expected.substr(0, 2), expected.substr(2, 2));
+    window.setTimeout(function () {
+      board.setPosition(state.pieces);
+      board.mark([]);
+      renderBadge('');
+      locked = false;
+    }, REVERT_MS);
+  }
+
+  continueEl.onclick = function () {
+    mode = 'free';
+    locked = false;
+    setText(overlayEl, '');
+    boardEl.className = '';
+    continueEl.className = 'hidden';
+    noteEl.textContent = '';
+    render();
+    scheduleOpponent();
+  };
+
+  resetEl.onclick = function () {
+    start();
+  };
+
+  if (!opening) {
+    taskEl.textContent = 'Opening not found';
+    return;
+  }
+
+  document.title = 'Chess — ' + opening.name;
+  start();
+  board.fitToScreen();
+})();
+</script>
+</body>
+</html>
