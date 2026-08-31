@@ -26,6 +26,8 @@
 
     this.cells = {};
 
+    table.appendChild(filesRow(files));
+
     for (var r = 0; r < 8; r++) {
       var tr = document.createElement('tr');
       tr.appendChild(label(String(ranks[r])));
@@ -39,18 +41,11 @@
         tr.appendChild(td);
       }
 
+      tr.appendChild(label(String(ranks[r])));
       table.appendChild(tr);
     }
 
-    var footer = document.createElement('tr');
-    footer.className = 'files';
-    footer.appendChild(label(''));
-
-    for (var i = 0; i < 8; i++) {
-      footer.appendChild(label(FILES[files[i]]));
-    }
-
-    table.appendChild(footer);
+    table.appendChild(filesRow(files));
     this.renderAll();
   };
 
@@ -131,7 +126,7 @@
     var sample = this.cells.a1;
     var current = sample.offsetHeight;
     var spare = viewport - used - 8;
-    var maxSquare = Math.floor(this.tableEl.offsetWidth / 9);
+    var maxSquare = Math.floor(this.tableEl.offsetWidth / 10);
     var target = Math.min(maxSquare, current + Math.floor(spare / 8));
 
     if (target <= 0 || target === current) return;
@@ -146,6 +141,27 @@
     th.textContent = text;
 
     return th;
+  }
+
+  function corner() {
+    var th = label('');
+    th.className = 'corner';
+
+    return th;
+  }
+
+  function filesRow(files) {
+    var tr = document.createElement('tr');
+    tr.className = 'files';
+    tr.appendChild(corner());
+
+    for (var i = 0; i < 8; i++) {
+      tr.appendChild(label(FILES[files[i]]));
+    }
+
+    tr.appendChild(corner());
+
+    return tr;
   }
 
   global.Board = Board;
