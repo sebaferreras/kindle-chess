@@ -31,6 +31,12 @@ Live: https://sebaferreras.github.io/kindle-chess/
 
 On the Kindle: Menu → Web Browser → `http://<IP>:8000/`
 
+## Deploy
+
+Before pushing to `main` (GitHub Pages serves from it), bump the asset version so the Kindle browser re-downloads the JS/CSS instead of using its cache:
+
+    ./tools/bump_version.sh
+
 ## Tests
 
     ./test/run.sh
