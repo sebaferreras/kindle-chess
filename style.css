@@ -320,7 +320,8 @@ button.last { background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://w
 .hint {
   width: 70%;
   max-width: 22rem;
-  margin: 0.2rem auto 0.8rem;
+  /* -1.1rem offsets the h1's collapsed 1.5rem bottom margin: net 0.4rem gap */
+  margin: -1.1rem auto 1.2rem;
   font-size: 0.85rem;
   color: #555;
 }
