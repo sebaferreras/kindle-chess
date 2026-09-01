@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Chess — Coordinates</title>
+<script>document.documentElement.className = 'loading';</script>
+<link rel="stylesheet" href="style.css?v=9">
+</head>
+<body>
+<table id="board"></table>
+<p id="task"></p>
+<p id="status"></p>
+<p class="controls">
+  <a class="icon back" href="training.html" title="Training"></a>
+  <button id="start">New round</button>
+</p>
+
+<script src="board.js?v=9"></script>
+<script>
+(function () {
+  'use strict';
+
+  var BEST_KEY = 'kindle-chess-coords';
+  var ROUND_LENGTH = 10;
+  var FILES = 'abcdefgh';
+
+  var taskEl = document.getElementById('task');
+  var statusEl = document.getElementById('status');
+  var startEl = document.getElementById('start');
+  var board = new Board(document.getElementById('board'), onSquareTap);
+  var best = load();
+  var targets = [];
+  var index = 0;
+  var correct = 0;
+  var startedAt = null;
+  var locked = true;
+
+  function load() {
+    try {
+      var raw = window.localStorage.getItem(BEST_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function save() {
+    try {
+      window.localStorage.setItem(BEST_KEY, JSON.stringify(best));
+    } catch (e) {}
+  }
+
+  function randomSquares(n) {
+    var pool = [];
+
+    for (var f = 0; f < 8; f++) {
+      for (var r = 1; r <= 8; r++) {
+        pool.push(FILES.charAt(f) + r);
+      }
+    }
+
+    for (var i = pool.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var swap = pool[i];
+      pool[i] = pool[j];
+      pool[j] = swap;
+    }
+
+    return pool.slice(0, n);
+  }
+
+  function newRound() {
+    targets = randomSquares(ROUND_LENGTH);
+    index = 0;
+    correct = 0;
+    startedAt = Date.now();
+    locked = false;
+    board.setFlipped(Math.random() < 0.5);
+    board.select(null);
+    board.mark([]);
+    showPrompt();
+    statusEl.textContent = bestText();
+  }
+
+  function showPrompt() {
+    var side = board.flipped ? 'Black side' : 'White side';
+    taskEl.textContent = 'Tap ' + targets[index] + ' · ' + (index + 1) + '/' + ROUND_LENGTH + ' · ' + side;
+  }
+
+  function bestText() {
+    if (!best) return 'Tap the named square as fast as you can';
+
+    return 'Best: ' + best.correct + '/' + ROUND_LENGTH + ' in ' + Math.round(best.ms / 1000) + 's';
+  }
+
+  function onSquareTap(square) {
+    if (locked) return;
+
+    if (square === targets[index]) {
+      correct++;
+      advance();
+      return;
+    }
+
+    locked = true;
+    board.select(targets[index]);
+    window.setTimeout(function () {
+      board.select(null);
+      locked = false;
+      advance();
+    }, 900);
+  }
+
+  function advance() {
+    index++;
+
+    if (index < targets.length) {
+      showPrompt();
+      return;
+    }
+
+    finishRound();
+  }
+
+  function finishRound() {
+    locked = true;
+    var ms = Date.now() - startedAt;
+    var better = !best || correct > best.correct || (correct === best.correct && ms < best.ms);
+
+    if (better) {
+      best = { correct: correct, ms: ms };
+      save();
+    }
+
+    taskEl.textContent = 'Round over: ' + correct + '/' + ROUND_LENGTH + ' in ' + Math.round(ms / 1000) + 's' + (better ? ' · New best!' : '');
+    statusEl.textContent = bestText();
+  }
+
+  startEl.onclick = newRound;
+
+  board.setPosition({});
+  newRound();
+  board.fitToScreen();
+})();
+</script>
+<script>document.documentElement.className = '';</script>
+</body>
+</html>

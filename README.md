@@ -10,7 +10,7 @@ Live: https://sebaferreras.github.io/kindle-chess/
 - `play.html` — play against the bot (levels 1–8, offer draw, resign)
 - `puzzles.html` — tactical puzzles with your own puzzle rating; `?daily=1` serves one fixed puzzle per day with a solve streak (no rating impact)
 - `games.html` — finished games, opening each one in a move-by-move review with verdicts; any reviewed position can be played out against the bot as a practice game (no rating)
-- `training.html` — training hub: endgames (curated positions with a goal) and opening lines to practice
+- `training.html` — training hub: endgames (curated positions with a goal), opening lines to practice, and a coordinates trainer (tap the named square, best score saved)
 - `stats.html` — results per level and puzzle progress
 
 ## Modules
