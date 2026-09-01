@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <title>Chess — Bot</title>
-<link rel="stylesheet" href="style.css?v=2">
+<script>document.documentElement.className = 'loading';</script>
+<link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
 <div class="board-wrap">
@@ -29,9 +30,9 @@
   <button id="reset" class="icon reset" title="New game"></button>
 </p>
 
-<script src="chess.js?v=2"></script>
-<script src="bot.js?v=2"></script>
-<script src="board.js?v=2"></script>
+<script src="chess.js?v=3"></script>
+<script src="bot.js?v=3"></script>
+<script src="board.js?v=3"></script>
 <script>
 (function () {
   'use strict';
@@ -332,5 +333,6 @@
   scheduleBot();
 })();
 </script>
+<script>document.documentElement.className = '';</script>
 </body>
 </html>

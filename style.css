@@ -157,8 +157,12 @@ h2 {
   margin: 1.2rem 0 0.4rem;
 }
 
+html.loading body {
+  visibility: hidden;
+}
+
 .controls {
-  margin: 0.6rem 0 0.4rem;
+  margin: 1.2rem 0 0.4rem;
 }
 
 #task {

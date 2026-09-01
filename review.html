@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <title>Chess — Review</title>
-<link rel="stylesheet" href="style.css?v=2">
+<script>document.documentElement.className = 'loading';</script>
+<link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
 <div class="board-wrap">
@@ -20,9 +21,9 @@
   <button id="last" class="icon last" title="End"></button>
 </p>
 
-<script src="chess.js?v=2"></script>
-<script src="bot.js?v=2"></script>
-<script src="board.js?v=2"></script>
+<script src="chess.js?v=3"></script>
+<script src="bot.js?v=3"></script>
+<script src="board.js?v=3"></script>
 <script>
 (function () {
   'use strict';
@@ -170,13 +171,6 @@
     setText(badgeEl, finished ? RESULTS[game.result] : '');
 
     var moveIndex = ply - 1;
-    var mover = positions[moveIndex].turn;
-
-    if (mover !== HUMAN_COLOR) {
-      taskEl.textContent = 'Bot move';
-      return;
-    }
-
     var cached = game.analysis[moveIndex];
 
     if (cached) {
@@ -242,6 +236,8 @@
     var before = positions[moveIndex];
     var text = verdict.label;
 
+    if (before.turn !== HUMAN_COLOR) text = 'Bot: ' + text;
+
     if (verdict.loss > 15) text += ' (' + formatLoss(verdict.loss) + ')';
 
     if (verdict.best === played) {
@@ -275,5 +271,6 @@
   board.fitToScreen();
 })();
 </script>
+<script>document.documentElement.className = '';</script>
 </body>
 </html>
