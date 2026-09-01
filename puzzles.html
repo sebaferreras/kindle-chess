@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <title>Chess — Puzzles</title>
 <script>document.documentElement.className = 'loading';</script>
-<link rel="stylesheet" href="style.css?v=6">
+<link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
 <table id="board"></table>
@@ -12,13 +12,14 @@
 <p id="status"></p>
 <p class="controls">
   <a class="icon back" href="index.html" title="Menu"></a>
+  <select id="theme" title="Theme"></select>
   <button id="solution">Show solution</button>
   <button id="next">Next</button>
 </p>
 
-<script src="chess.js?v=6"></script>
-<script src="board.js?v=6"></script>
-<script src="puzzles.js?v=6"></script>
+<script src="chess.js?v=7"></script>
+<script src="board.js?v=7"></script>
+<script src="puzzles.js?v=7"></script>
 <script>
 (function () {
   'use strict';
@@ -46,10 +47,30 @@
     dovetailMate: 'dovetail mate', doubleBishopMate: 'double bishop mate'
   };
 
+  var THEME_FILTERS = [
+    ['', 'All themes'],
+    ['mateIn1', 'Mate in 1'],
+    ['mateIn2', 'Mate in 2'],
+    ['mate', 'Mate'],
+    ['fork', 'Fork'],
+    ['pin', 'Pin'],
+    ['skewer', 'Skewer'],
+    ['discoveredAttack', 'Discovered attack'],
+    ['hangingPiece', 'Hanging piece'],
+    ['sacrifice', 'Sacrifice'],
+    ['deflection', 'Deflection'],
+    ['defensiveMove', 'Defensive move'],
+    ['advancedPawn', 'Advanced pawn'],
+    ['kingsideAttack', 'Kingside attack'],
+    ['rookEndgame', 'Rook endgame'],
+    ['pawnEndgame', 'Pawn endgame']
+  ];
+
   var taskEl = document.getElementById('task');
   var statusEl = document.getElementById('status');
   var solutionEl = document.getElementById('solution');
   var nextEl = document.getElementById('next');
+  var themeEl = document.getElementById('theme');
   var board = new Board(document.getElementById('board'), onSquareTap);
   var progress = load() || { rating: START_RATING, solved: {}, failed: {}, current: null };
   var dailyMode = /[?&]daily=1/.test(window.location.search);
@@ -159,15 +180,30 @@
     return current || pickPuzzle();
   }
 
+  function isFresh(p) {
+    return !progress.solved[p.id] && !progress.failed[p.id];
+  }
+
   function pickPuzzle() {
-    var candidates = [];
+    var theme = progress.theme || '';
+    var themed = [];
+    var inRange = [];
 
     for (var i = 0; i < PUZZLES.length; i++) {
       var p = PUZZLES[i];
-      var fresh = !progress.solved[p.id] && !progress.failed[p.id];
 
-      if (fresh && Math.abs(p.rating - progress.rating) <= RANGE) candidates.push(p);
+      if (theme && p.themes.indexOf(theme) === -1) continue;
+
+      themed.push(p);
+
+      if (isFresh(p) && Math.abs(p.rating - progress.rating) <= RANGE) inRange.push(p);
     }
+
+    var candidates = inRange;
+
+    if (!candidates.length) candidates = themed.filter(isFresh);
+
+    if (!candidates.length) candidates = themed;
 
     if (!candidates.length) candidates = PUZZLES;
 
@@ -371,7 +407,26 @@
     startPuzzle(pickPuzzle());
   };
 
-  if (dailyMode) nextEl.className = 'hidden';
+  for (var f = 0; f < THEME_FILTERS.length; f++) {
+    var option = document.createElement('option');
+    option.value = THEME_FILTERS[f][0];
+    option.textContent = THEME_FILTERS[f][1];
+    themeEl.appendChild(option);
+  }
+
+  themeEl.value = progress.theme || '';
+
+  themeEl.onchange = function () {
+    progress.theme = themeEl.value;
+    progress.current = null;
+    save();
+    startPuzzle(pickPuzzle());
+  };
+
+  if (dailyMode) {
+    nextEl.className = 'hidden';
+    themeEl.className = 'hidden';
+  }
 
   startPuzzle(dailyMode ? dailyPuzzle() : currentOrNewPuzzle());
   board.fitToScreen();
