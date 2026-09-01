@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <title>Chess — Review</title>
 <script>document.documentElement.className = 'loading';</script>
-<link rel="stylesheet" href="style.css?v=13">
+<link rel="stylesheet" href="style.css?v=14">
 </head>
 <body>
 <div class="board-wrap">
@@ -14,19 +14,18 @@
 <p id="task"></p>
 <p id="status"></p>
 <p class="controls">
-  <a class="icon back" href="games.html?v=13" title="My games"></a>
+  <a class="icon back" href="games.html?v=14" title="My games"></a>
   <button id="first" class="icon first" title="Start"></button>
   <button id="prev" class="icon prev" title="Previous"></button>
   <button id="next" class="icon next" title="Next"></button>
   <button id="last" class="icon last" title="End"></button>
   <button id="playfrom" class="icon playfrom" title="Play from here"></button>
-  <button id="pgn" title="Show PGN">PGN</button>
+  <button id="export" title="Export as QR">QR</button>
 </p>
-<textarea id="pgnbox" readonly></textarea>
 
-<script src="chess.js?v=13"></script>
-<script src="bot.js?v=13"></script>
-<script src="board.js?v=13"></script>
+<script src="chess.js?v=14"></script>
+<script src="bot.js?v=14"></script>
+<script src="board.js?v=14"></script>
 <script>
 (function () {
   'use strict';
@@ -48,8 +47,7 @@
     last: document.getElementById('last'),
     playfrom: document.getElementById('playfrom')
   };
-  var pgnEl = document.getElementById('pgn');
-  var pgnBoxEl = document.getElementById('pgnbox');
+  var exportEl = document.getElementById('export');
   var board = new Board(document.getElementById('board'), null);
   var games = load() || [];
   var game = findGame(gameIdFromUrl());
@@ -284,36 +282,6 @@
     return (score >= 0 ? '+' : '−') + Math.abs(score / 100).toFixed(1);
   }
 
-  function buildPgn() {
-    var results = { win: '1-0', loss: '0-1', draw: '1/2-1/2' };
-    var result = results[game.result] || '*';
-    var date = game.date ? game.date.substr(0, 10).replace(/-/g, '.') : '????.??.??';
-    var tags = [
-      '[Event "Kindle Chess"]',
-      '[Date "' + date + '"]',
-      '[White "You"]',
-      '[Black "Bot level ' + game.level + '"]',
-      '[Result "' + result + '"]'
-    ];
-
-    if (game.fen) {
-      tags.push('[SetUp "1"]');
-      tags.push('[FEN "' + game.fen + '"]');
-    }
-
-    var moves = [];
-
-    for (var i = 0; i < game.history.length; i += 2) {
-      var pair = (i / 2 + 1) + '. ' + game.history[i];
-
-      if (game.history[i + 1]) pair += ' ' + game.history[i + 1];
-
-      moves.push(pair);
-    }
-
-    return tags.join('\n') + '\n\n' + moves.join(' ') + ' ' + result + '\n';
-  }
-
   function formatLoss(loss) {
     if (loss >= MATE_SCORE / 2) return 'missed mate';
 
@@ -333,16 +301,10 @@
   buttons.playfrom.onclick = function () {
     if (analyzing) return;
 
-    window.location.href = 'play.html?fen=' + encodeURIComponent(Chess.toFen(positions[ply])) + '&v=13';
+    window.location.href = 'play.html?fen=' + encodeURIComponent(Chess.toFen(positions[ply])) + '&v=14';
   };
-  pgnEl.onclick = function () {
-    if (pgnBoxEl.className === 'open') {
-      pgnBoxEl.className = '';
-      return;
-    }
-
-    pgnBoxEl.value = buildPgn();
-    pgnBoxEl.className = 'open';
+  exportEl.onclick = function () {
+    window.location.href = 'export.html?id=' + game.id + '&v=14';
   };
   render();
   board.fitToScreen();
