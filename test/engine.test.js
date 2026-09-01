@@ -47,4 +47,13 @@ t.equal(notation.join(' '), 'e4 e5 Nf3 Nc6 Bc4 Nf6 Ng5 d5 exd5 Nxd5 Nxf7 Kxf7 Qf
 var start = C.fromFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
 t.equal(C.legalMoves(start, 'e2').sort(), ['e3', 'e4'], 'FEN start position');
 
+t.equal(C.toFen(C.initialPosition()), 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', 'toFen start position');
+
+['5rk1/p1pb1ppp/8/3p4/2q5/4PQ2/PP3RPP/5RK1 b - - 0 1', '7k/7P/8/8/8/8/8/K7 w - - 0 1', 'rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq d3 0 1'].forEach(function (fen) {
+  t.equal(C.toFen(C.fromFen(fen)), fen, 'FEN round-trip: ' + fen);
+});
+
+s = play(C.initialPosition(), [['e2', 'e4'], ['e7', 'e5'], ['g1', 'f3']]);
+t.equal(C.toFen(s), 'rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 0 1', 'toFen after moves');
+
 t.summary();

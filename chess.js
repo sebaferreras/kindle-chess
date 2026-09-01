@@ -88,6 +88,40 @@
     };
   }
 
+  function toFen(state) {
+    var rows = [];
+
+    for (var rank = 8; rank >= 1; rank--) {
+      var row = '';
+      var empty = 0;
+
+      for (var f = 0; f < 8; f++) {
+        var piece = state.pieces[FILES[f] + rank];
+
+        if (!piece) {
+          empty++;
+          continue;
+        }
+
+        if (empty) {
+          row += empty;
+          empty = 0;
+        }
+
+        row += piece.charAt(0) === 'w' ? piece.charAt(1) : piece.charAt(1).toLowerCase();
+      }
+
+      if (empty) row += empty;
+
+      rows.push(row);
+    }
+
+    var rights = (state.castling.wK ? 'K' : '') + (state.castling.wQ ? 'Q' : '') +
+      (state.castling.bK ? 'k' : '') + (state.castling.bQ ? 'q' : '');
+
+    return rows.join('/') + ' ' + state.turn + ' ' + (rights || '-') + ' ' + (state.enPassant || '-') + ' 0 1';
+  }
+
   function clone(state) {
     var pieces = {};
 
@@ -357,6 +391,7 @@
     notation: notation,
     initialPosition: initialPosition,
     fromFen: fromFen,
+    toFen: toFen,
     legalMoves: legalMoves,
     applyMove: applyMove,
     inCheck: inCheck,

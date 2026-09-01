@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <title>Chess — Review</title>
 <script>document.documentElement.className = 'loading';</script>
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
 <div class="board-wrap">
@@ -19,11 +19,12 @@
   <button id="prev" class="icon prev" title="Previous"></button>
   <button id="next" class="icon next" title="Next"></button>
   <button id="last" class="icon last" title="End"></button>
+  <button id="playfrom" class="icon playfrom" title="Play from here"></button>
 </p>
 
-<script src="chess.js?v=3"></script>
-<script src="bot.js?v=3"></script>
-<script src="board.js?v=3"></script>
+<script src="chess.js?v=4"></script>
+<script src="bot.js?v=4"></script>
+<script src="board.js?v=4"></script>
 <script>
 (function () {
   'use strict';
@@ -42,7 +43,8 @@
     first: document.getElementById('first'),
     prev: document.getElementById('prev'),
     next: document.getElementById('next'),
-    last: document.getElementById('last')
+    last: document.getElementById('last'),
+    playfrom: document.getElementById('playfrom')
   };
   var board = new Board(document.getElementById('board'), null);
   var games = load() || [];
@@ -81,7 +83,7 @@
   }
 
   function buildPositions() {
-    var state = Chess.initialPosition();
+    var state = game.fen ? Chess.fromFen(game.fen) : Chess.initialPosition();
     positions.push(state);
 
     for (var i = 0; i < game.uci.length; i++) {
@@ -127,6 +129,9 @@
     buttons.prev.disabled = ply === 0 || analyzing;
     buttons.next.disabled = ply === game.uci.length || analyzing;
     buttons.last.disabled = ply === game.uci.length || analyzing;
+
+    var status = Chess.status(positions[ply]);
+    buttons.playfrom.disabled = analyzing || status === 'checkmate' || status === 'stalemate';
   }
 
   function renderHistory() {
@@ -267,6 +272,11 @@
   buttons.prev.onclick = function () { goTo(ply - 1); };
   buttons.next.onclick = function () { goTo(ply + 1); };
   buttons.last.onclick = function () { goTo(game.uci.length); };
+  buttons.playfrom.onclick = function () {
+    if (analyzing) return;
+
+    window.location.href = 'play.html?fen=' + encodeURIComponent(Chess.toFen(positions[ply]));
+  };
   render();
   board.fitToScreen();
 })();

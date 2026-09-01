@@ -4,4 +4,5 @@ cd "$(dirname "$0")/.."
 current=$(grep -ohE 'style\.css\?v=[0-9]+' index.html | sed 's/.*v=//')
 next=$((current + 1))
 sed -i '' -E "s/\.(js|css)\?v=[0-9]+/.\1?v=$next/g" *.html
+sed -i '' -E "s/· v[0-9]+</· v$next</" index.html
 echo "v=$next"

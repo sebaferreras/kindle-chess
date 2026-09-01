@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Chess — My games</title>
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
 <h1>My games</h1>
@@ -51,13 +51,22 @@
 
   var rows = ['<tr><th>Date</th><th>Level</th><th>Result</th><th>Moves</th></tr>'];
 
+  var anyPractice = false;
+
   for (var i = games.length - 1; i >= 0; i--) {
     var g = games[i];
     var moves = Math.ceil(g.uci.length / 2);
-    rows.push('<tr>' + cell(g.id, formatDate(g.date)) + cell(g.id, g.level) + cell(g.id, RESULTS[g.result]) + cell(g.id, moves) + '</tr>');
+
+    if (g.fen) anyPractice = true;
+
+    rows.push('<tr>' + cell(g.id, formatDate(g.date)) + cell(g.id, g.level) + cell(g.id, RESULTS[g.result] + (g.fen ? ' *' : '')) + cell(g.id, moves) + '</tr>');
   }
 
   document.getElementById('games').innerHTML = rows.join('');
+
+  if (anyPractice) {
+    document.getElementById('games-empty').textContent = '* practice game (no rating)';
+  }
 })();
 </script>
 </body>
