@@ -317,6 +317,12 @@ button.last { background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://w
   color: #555;
 }
 
+.hint {
+  margin: 0.2rem 0 0.8rem;
+  font-size: 0.85rem;
+  color: #555;
+}
+
 .muted {
   color: #888;
   font-size: 1rem;
