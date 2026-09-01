@@ -318,7 +318,9 @@ button.last { background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://w
 }
 
 .hint {
-  margin: 0.2rem 0 0.8rem;
+  width: 70%;
+  max-width: 22rem;
+  margin: 0.2rem auto 0.8rem;
   font-size: 0.85rem;
   color: #555;
 }
