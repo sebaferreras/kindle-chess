@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <title>Chess — Puzzles</title>
 <script>document.documentElement.className = 'loading';</script>
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 <table id="board"></table>
@@ -16,16 +16,18 @@
   <button id="next">Next</button>
 </p>
 
-<script src="chess.js?v=4"></script>
-<script src="board.js?v=4"></script>
-<script src="puzzles.js?v=4"></script>
+<script src="chess.js?v=5"></script>
+<script src="board.js?v=5"></script>
+<script src="puzzles.js?v=5"></script>
 <script>
 (function () {
   'use strict';
 
   var PROGRESS_KEY = 'kindle-chess-puzzles';
+  var DAILY_KEY = 'kindle-chess-daily';
   var START_RATING = 1200;
   var RANGE = 150;
+  var DAILY_RANGE = 300;
   var THEME_NAMES = {
     mate: 'mate', mateIn1: 'mate in 1', mateIn2: 'mate in 2', mateIn3: 'mate in 3', mateIn4: 'mate in 4',
     fork: 'fork', pin: 'pin', skewer: 'skewer', discoveredAttack: 'discovered attack',
@@ -50,6 +52,8 @@
   var nextEl = document.getElementById('next');
   var board = new Board(document.getElementById('board'), onSquareTap);
   var progress = load() || { rating: START_RATING, solved: {}, failed: {}, current: null };
+  var dailyMode = /[?&]daily=1/.test(window.location.search);
+  var daily = loadDaily() || { assigned: null, lastDone: null, streak: 0, best: 0 };
   var puzzle, state, solution, step, failedThisPuzzle, sawSolution, locked;
 
   function load() {
@@ -65,6 +69,80 @@
     try {
       window.localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
     } catch (e) {}
+  }
+
+  function loadDaily() {
+    try {
+      var raw = window.localStorage.getItem(DAILY_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveDaily() {
+    try {
+      window.localStorage.setItem(DAILY_KEY, JSON.stringify(daily));
+    } catch (e) {}
+  }
+
+  function pad(n) {
+    return n < 10 ? '0' + n : String(n);
+  }
+
+  function dateKey(d) {
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  function dailyPuzzle() {
+    var today = dateKey(new Date());
+
+    if (daily.assigned && daily.assigned.date === today) {
+      var assigned = findById(daily.assigned.id);
+
+      if (assigned) return assigned;
+    }
+
+    var seed = parseInt(today.replace(/-/g, ''), 10);
+    var candidates = [];
+
+    for (var i = 0; i < PUZZLES.length; i++) {
+      var p = PUZZLES[i];
+      var fresh = !progress.solved[p.id] && !progress.failed[p.id];
+
+      if (fresh && Math.abs(p.rating - progress.rating) <= DAILY_RANGE) candidates.push(p);
+    }
+
+    if (!candidates.length) candidates = PUZZLES;
+
+    var pick = candidates[(seed * 48271) % candidates.length];
+    daily.assigned = { date: today, id: pick.id };
+    saveDaily();
+
+    return pick;
+  }
+
+  function markDailyDone() {
+    var today = dateKey(new Date());
+
+    if (daily.lastDone === today) return;
+
+    var yesterday = dateKey(new Date(Date.now() - 86400000));
+    daily.streak = daily.lastDone === yesterday ? daily.streak + 1 : 1;
+    daily.best = Math.max(daily.best, daily.streak);
+    daily.lastDone = today;
+    saveDaily();
+  }
+
+  function currentStreak() {
+    var today = dateKey(new Date());
+    var yesterday = dateKey(new Date(Date.now() - 86400000));
+
+    return daily.lastDone === today || daily.lastDone === yesterday ? daily.streak : 0;
+  }
+
+  function scoreText() {
+    return dailyMode ? 'Streak: ' + currentStreak() + ' · Best: ' + daily.best : 'Your rating: ' + progress.rating;
   }
 
   function findById(id) {
@@ -123,8 +201,11 @@
 
   function startPuzzle(p) {
     puzzle = p;
-    progress.current = p.id;
-    save();
+
+    if (!dailyMode) {
+      progress.current = p.id;
+      save();
+    }
     state = Chess.fromFen(p.fen);
     solution = p.moves.split(' ');
     step = 0;
@@ -206,20 +287,23 @@
 
     if (!failedThisPuzzle && !sawSolution) {
       failedThisPuzzle = true;
-      progress.failed[puzzle.id] = true;
-      adjustRating(false);
+
+      if (!dailyMode) {
+        progress.failed[puzzle.id] = true;
+        adjustRating(false);
+      }
     }
 
     board.setPosition(Chess.applyMove(state, from, to).pieces);
     board.mark([from, to]);
-    statusEl.textContent = 'Incorrect · Your rating: ' + progress.rating;
+    statusEl.textContent = 'Incorrect · ' + scoreText();
     window.setTimeout(undoWrongMove, 1200);
   }
 
   function undoWrongMove() {
     board.setPosition(state.pieces);
     board.mark([]);
-    statusEl.textContent = 'Try again · Your rating: ' + progress.rating;
+    statusEl.textContent = 'Try again · ' + scoreText();
     locked = false;
   }
 
@@ -227,20 +311,33 @@
     locked = true;
     solutionEl.disabled = true;
 
-    if (!failedThisPuzzle && !sawSolution) {
+    if (dailyMode) {
       progress.solved[puzzle.id] = true;
-      adjustRating(true);
+      save();
+      markDailyDone();
+    } else {
+      if (!failedThisPuzzle && !sawSolution) {
+        progress.solved[puzzle.id] = true;
+        adjustRating(true);
+      }
+
+      progress.current = null;
+      save();
     }
 
-    progress.current = null;
-    save();
-    statusEl.textContent = (sawSolution ? 'Correct (with help)' : 'Correct') + ' · Your rating: ' + progress.rating;
+    statusEl.textContent = (sawSolution ? 'Correct (with help)' : 'Correct') + ' · ' + scoreText();
   }
 
   function showInfo() {
     var side = state.turn === 'w' ? 'Black' : 'White';
     taskEl.textContent = side + ' to play · ' + themeLabel(puzzle.themes);
-    statusEl.textContent = 'Puzzle ' + puzzle.rating + ' · Your rating: ' + progress.rating;
+
+    if (dailyMode) {
+      var done = daily.lastDone === dateKey(new Date());
+      statusEl.textContent = 'Daily puzzle ' + puzzle.rating + (done ? ' · Done today' : '') + ' · ' + scoreText();
+    } else {
+      statusEl.textContent = 'Puzzle ' + puzzle.rating + ' · Your rating: ' + progress.rating;
+    }
   }
 
   function adjustRating(won) {
@@ -274,7 +371,9 @@
     startPuzzle(pickPuzzle());
   };
 
-  startPuzzle(currentOrNewPuzzle());
+  if (dailyMode) nextEl.className = 'hidden';
+
+  startPuzzle(dailyMode ? dailyPuzzle() : currentOrNewPuzzle());
   board.fitToScreen();
 })();
 </script>

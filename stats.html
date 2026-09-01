@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Chess — Statistics</title>
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 <h1>Statistics</h1>
@@ -64,9 +64,19 @@
   }
 
   var progress = load('kindle-chess-puzzles');
+  function dateKey(d) {
+    var m = d.getMonth() + 1;
+    var day = d.getDate();
+
+    return d.getFullYear() + '-' + (m < 10 ? '0' + m : m) + '-' + (day < 10 ? '0' + day : day);
+  }
+
+  var daily = load('kindle-chess-daily');
+  var alive = daily && (daily.lastDone === dateKey(new Date()) || daily.lastDone === dateKey(new Date(Date.now() - 86400000)));
+  var streak = daily ? ' · Daily streak: ' + (alive ? daily.streak : 0) + ' (best ' + daily.best + ')' : '';
 
   document.getElementById('puzzles').textContent = progress
-    ? 'Rating: ' + progress.rating + ' · Solved: ' + count(progress.solved) + ' · Failed: ' + count(progress.failed)
+    ? 'Rating: ' + progress.rating + ' · Solved: ' + count(progress.solved) + ' · Failed: ' + count(progress.failed) + streak
     : 'No puzzles solved yet.';
 })();
 </script>
