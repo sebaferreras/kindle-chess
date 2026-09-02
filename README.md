@@ -1,54 +1,44 @@
 # Kindle Chess
 
-A chess web app built for the Kindle Paperwhite browser: plain HTML + CSS + ES5 JavaScript, no dependencies, no build step.
+A complete chess app that runs in the Kindle Paperwhite's web browser.
 
-Live: https://sebaferreras.github.io/kindle-chess/
+**Live: https://sebaferreras.github.io/kindle-chess/**
 
-## Pages
+Everything is designed for e-ink — high contrast, no animations — and everything you do (games, ratings, streaks, review schedules) is stored on the device itself. No account, no server, nothing leaves your Kindle.
 
-- `index.html` — menu
-- `play.html` — play against the bot (levels 1–8, offer draw, resign)
-- `puzzles.html` — tactical puzzles with your own puzzle rating; `?daily=1` serves one fixed puzzle per day with a solve streak (no rating impact)
-- `games.html` — finished games, opening each one in a move-by-move review with verdicts; any reviewed position can be played out against the bot as a practice game (no rating)
-- `export.html` — full-screen QR code for a finished game: scanning opens the PGN in Lichess's import form
-- `training.html` — training hub: endgames (curated positions with a goal), opening lines to practice with spaced repetition (a clean run doubles the review interval up to 30 days, a slip resets it to 1; due lines are flagged in the list), and a coordinates trainer (tap the named square, best score saved)
-- `stats.html` — results per level and puzzle progress
+## Play vs bot
 
-## Modules
+Play full games against a bot with 8 difficulty levels. You get your own Elo rating that goes up and down with each rated game, and the app suggests the level that best matches it. You can offer a draw (the bot only accepts when the position justifies it) or resign.
 
-- `chess.js` — rules (legal moves, check, castling, en passant, promotion, mate/stalemate, FEN, SAN)
-- `bot.js` — alpha-beta minimax with piece-square tables and time-bounded iterative deepening
-- `board.js` — shared board (rendering, selection, orientation, move markers)
-- `puzzles.js` — 2123 puzzles sampled from the Lichess CC0 database (rating 600–2400)
-- `endgames.js` — endgame training positions (FEN, goal, move limit)
-- `openings.js` — opening main lines (ECO codes from the CC0 lichess-org/chess-openings database)
-- `style.css` — e-ink friendly styles: no animations, high contrast, no flexbox/grid
-- `qr.js` — vendored qrcode-generator by Kazuhiko Arase (MIT), used by the export page
+## Puzzles
 
-## Run locally
+Tactical puzzles matched to your own puzzle rating, which adjusts as you solve or fail them. A theme selector lets you drill one motif at a time — mate in 1, mate in 2, forks, pins, skewers, discovered attacks, endgames and more. If you're stuck, "Show solution" reveals the line (solving with help doesn't count for rating).
 
-    cd ~/Dev/HalfCookieApps/KindleChess
-    python3 -m http.server 8000
-    ipconfig getifaddr en0
+## Daily puzzle
 
-On the Kindle: Menu → Web Browser → `http://<IP>:8000/`
+One fixed puzzle per day. Solving it keeps your streak alive — miss a day and the streak resets, but your best streak is remembered. The daily puzzle never affects your puzzle rating, so it's a ritual, not a gamble.
 
-## Deploy
+## My games & review
 
-Before pushing to `main` (GitHub Pages serves from it), bump the asset version so the Kindle browser re-downloads the JS/CSS instead of using its cache:
+Every finished game is saved and can be reviewed move by move:
 
-    ./tools/bump_version.sh
+- Each move — yours **and** the bot's — gets a verdict (Good, Inaccuracy, Mistake, Blunder, Brilliant) plus the evaluation of what you played vs. the best move, so you can see exactly how much a mistake cost.
+- **Play from here**: continue any position of a reviewed game against the bot as a practice game. Great for retrying the game from just before a blunder. Practice games don't affect your rating.
+- **QR export**: one tap shows a full-screen QR code; scan it with your phone and the game opens in Lichess's import form, ready for a deep engine analysis.
 
-## Tests
+## Training
 
-    ./test/run.sh
+- **Openings**: guided lessons that explain each move of a line, then a practice mode where you play it from memory. Practice uses **spaced repetition**: a clean run doubles the review interval (1 → 2 → 4 → … → 30 days), a slip brings the line back tomorrow. The openings list shows "Due for review today: N" and flags the lines waiting for you. Recommended starter lines are marked with ★.
+- **Endgames**: curated positions with a concrete goal (mate with a queen, promote the pawn, hold the draw…) within a move limit.
+- **Coordinates**: a trainer that names a square and asks you to tap it — rounds of 10, from both sides of the board, with your best score saved.
 
-Runs the rules engine tests, validates every puzzle solution and every endgame position, and checks for ES6 syntax.
+## Statistics
 
-## Regenerate puzzles
+Results per bot level, your Elo rating with its peak, puzzle rating with solved/failed counts, and your daily-puzzle streak.
 
-Download `lichess_db_puzzle.csv.zst` from https://database.lichess.org/#puzzles and sample it,
-filtering by popularity, number of plays and solution length (≤ 6 moves, queen promotions only).
+## Development
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for the architecture, running locally, tests and deploy.
 
 ## License and credits
 
@@ -58,3 +48,4 @@ The code is MIT licensed (see `LICENSE`). Third-party material:
 - **Puzzles**: [Lichess puzzle database](https://database.lichess.org/#puzzles), CC0.
 - **Opening names and ECO codes**: [lichess-org/chess-openings](https://github.com/lichess-org/chess-openings), CC0.
 - **Bot evaluation tables**: values from the "Simplified Evaluation Function" on the [Chess Programming Wiki](https://www.chessprogramming.org/Simplified_Evaluation_Function).
+- **QR codes**: [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) by Kazuhiko Arase, MIT (vendored as `qr.js`).
