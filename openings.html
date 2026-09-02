@@ -3,23 +3,23 @@
 <head>
 <meta charset="utf-8">
 <title>Chess — Openings</title>
-<link rel="stylesheet" href="style.css?v=16">
+<link rel="stylesheet" href="style.css?v=17">
 </head>
 <body>
 <h1>Openings</h1>
 <p class="hint hidden" id="due"></p>
 <nav class="menu compact">
-  <a href="principles.html?v=16">Opening principles — read this first</a>
+  <a href="principles.html?v=17">Opening principles — read this first</a>
 </nav>
 <h2>As White</h2>
 <nav id="white" class="menu compact"></nav>
 <h2>As Black</h2>
 <nav id="black" class="menu compact"></nav>
 <p class="controls">
-  <a class="icon back" href="training.html?v=16" title="Training"></a>
+  <a class="icon back" href="training.html?v=17" title="Training"></a>
 </p>
 
-<script src="openings.js?v=16"></script>
+<script src="openings.js?v=17"></script>
 <script>
 (function () {
   'use strict';
@@ -60,7 +60,7 @@
     if (due) dueCount++;
 
     var mark = (o.starter ? '★ ' : '') + o.name + (record && !due ? ' ✓' : '') + (due ? ' — review' : '');
-    var href = 'opening.html?id=' + o.id + (due ? '&mode=practice' : '') + '&v=16';
+    var href = 'opening.html?id=' + o.id + (due ? '&mode=practice' : '') + '&v=17';
     var entry = '<a href="' + href + '"><span class="eco">' + o.eco + '</span> ' + mark + '</a>';
 
     if (o.starter) {

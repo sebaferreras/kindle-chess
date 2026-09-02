@@ -24,7 +24,7 @@ Every finished game is saved and can be reviewed move by move:
 
 - Each move — yours **and** the bot's — gets a verdict (Good, Inaccuracy, Mistake, Blunder, Brilliant) plus the evaluation of what you played vs. the best move, so you can see exactly how much a mistake cost.
 - **Play from here**: continue any position of a reviewed game against the bot as a practice game. Great for retrying the game from just before a blunder. Practice games don't affect your rating.
-- **QR export**: one tap shows a full-screen QR code; scan it with your phone and the game opens in Lichess's import form, ready for a deep engine analysis.
+- **QR export**: one tap shows a full-screen QR code; scan it with your phone and the game opens in Chess.com's analysis board, ready for a Game Review with every move graded (best, inaccuracy, mistake, blunder…).
 
 ## Training
 
