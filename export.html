@@ -4,17 +4,17 @@
 <meta charset="utf-8">
 <title>Chess — Export</title>
 <script>document.documentElement.className = 'loading';</script>
-<link rel="stylesheet" href="style.css?v=14">
+<link rel="stylesheet" href="style.css?v=15">
 </head>
 <body>
 <h1>Export game</h1>
 <div id="qr"></div>
 <p class="hint" id="caption">Scan with your phone to open the game in Lichess.</p>
 <p class="controls">
-  <a id="back" class="icon back" href="games.html?v=14" title="Review"></a>
+  <a id="back" class="icon back" href="games.html?v=15" title="Review"></a>
 </p>
 
-<script src="qr.js?v=14"></script>
+<script src="qr.js?v=15"></script>
 <script>
 (function () {
   'use strict';
@@ -85,13 +85,18 @@
     return;
   }
 
-  backEl.href = 'review.html?id=' + game.id + '&v=14';
+  backEl.href = 'review.html?id=' + game.id + '&v=15';
 
   var url = 'https://lichess.org/paste?pgn=' + encodeURIComponent(buildPgn(game));
   var qr = qrcode(0, 'L');
   qr.addData(url);
   qr.make();
   qrEl.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 4, scalable: true });
+
+  var svg = qrEl.getElementsByTagName('svg')[0];
+  var size = Math.round(Math.min(document.body.clientWidth * 0.85, 384));
+  svg.setAttribute('width', size);
+  svg.setAttribute('height', size);
 })();
 </script>
 <script>document.documentElement.className = '';</script>
