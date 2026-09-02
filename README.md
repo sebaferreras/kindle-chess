@@ -11,7 +11,7 @@ Live: https://sebaferreras.github.io/kindle-chess/
 - `puzzles.html` — tactical puzzles with your own puzzle rating; `?daily=1` serves one fixed puzzle per day with a solve streak (no rating impact)
 - `games.html` — finished games, opening each one in a move-by-move review with verdicts; any reviewed position can be played out against the bot as a practice game (no rating)
 - `export.html` — full-screen QR code for a finished game: scanning opens the PGN in Lichess's import form
-- `training.html` — training hub: endgames (curated positions with a goal), opening lines to practice, and a coordinates trainer (tap the named square, best score saved)
+- `training.html` — training hub: endgames (curated positions with a goal), opening lines to practice with spaced repetition (a clean run doubles the review interval up to 30 days, a slip resets it to 1; due lines are flagged in the list), and a coordinates trainer (tap the named square, best score saved)
 - `stats.html` — results per level and puzzle progress
 
 ## Modules

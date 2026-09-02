@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <title>Chess — Review</title>
 <script>document.documentElement.className = 'loading';</script>
-<link rel="stylesheet" href="style.css?v=15">
+<link rel="stylesheet" href="style.css?v=16">
 </head>
 <body>
 <div class="board-wrap">
@@ -14,7 +14,7 @@
 <p id="task"></p>
 <p id="status"></p>
 <p class="controls">
-  <a class="icon back" href="games.html?v=15" title="My games"></a>
+  <a class="icon back" href="games.html?v=16" title="My games"></a>
   <button id="first" class="icon first" title="Start"></button>
   <button id="prev" class="icon prev" title="Previous"></button>
   <button id="next" class="icon next" title="Next"></button>
@@ -23,9 +23,9 @@
   <button id="export" title="Export as QR">QR</button>
 </p>
 
-<script src="chess.js?v=15"></script>
-<script src="bot.js?v=15"></script>
-<script src="board.js?v=15"></script>
+<script src="chess.js?v=16"></script>
+<script src="bot.js?v=16"></script>
+<script src="board.js?v=16"></script>
 <script>
 (function () {
   'use strict';
@@ -301,10 +301,10 @@
   buttons.playfrom.onclick = function () {
     if (analyzing) return;
 
-    window.location.href = 'play.html?fen=' + encodeURIComponent(Chess.toFen(positions[ply])) + '&v=15';
+    window.location.href = 'play.html?fen=' + encodeURIComponent(Chess.toFen(positions[ply])) + '&v=16';
   };
   exportEl.onclick = function () {
-    window.location.href = 'export.html?id=' + game.id + '&v=15';
+    window.location.href = 'export.html?id=' + game.id + '&v=16';
   };
   render();
   board.fitToScreen();

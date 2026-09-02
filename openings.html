@@ -3,22 +3,23 @@
 <head>
 <meta charset="utf-8">
 <title>Chess — Openings</title>
-<link rel="stylesheet" href="style.css?v=15">
+<link rel="stylesheet" href="style.css?v=16">
 </head>
 <body>
 <h1>Openings</h1>
+<p class="hint hidden" id="due"></p>
 <nav class="menu compact">
-  <a href="principles.html?v=15">Opening principles — read this first</a>
+  <a href="principles.html?v=16">Opening principles — read this first</a>
 </nav>
 <h2>As White</h2>
 <nav id="white" class="menu compact"></nav>
 <h2>As Black</h2>
 <nav id="black" class="menu compact"></nav>
 <p class="controls">
-  <a class="icon back" href="training.html?v=15" title="Training"></a>
+  <a class="icon back" href="training.html?v=16" title="Training"></a>
 </p>
 
-<script src="openings.js?v=15"></script>
+<script src="openings.js?v=16"></script>
 <script>
 (function () {
   'use strict';
@@ -32,13 +33,35 @@
     }
   }
 
+  function pad(n) {
+    return n < 10 ? '0' + n : String(n);
+  }
+
+  var d = new Date();
+  var today = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+
+  function isDue(record) {
+    if (!record) return false;
+
+    if (record === true) return true;
+
+    return record.due <= today;
+  }
+
   var done = load('kindle-chess-openings') || {};
   var html = { w: [], b: [] };
+  var dueCount = 0;
 
   for (var i = 0; i < OPENINGS.length; i++) {
     var o = OPENINGS[i];
-    var mark = (o.starter ? '★ ' : '') + o.name + (done[o.id] ? ' ✓' : '');
-    var entry = '<a href="opening.html?id=' + o.id + '&v=15"><span class="eco">' + o.eco + '</span> ' + mark + '</a>';
+    var record = done[o.id];
+    var due = isDue(record);
+
+    if (due) dueCount++;
+
+    var mark = (o.starter ? '★ ' : '') + o.name + (record && !due ? ' ✓' : '') + (due ? ' — review' : '');
+    var href = 'opening.html?id=' + o.id + (due ? '&mode=practice' : '') + '&v=16';
+    var entry = '<a href="' + href + '"><span class="eco">' + o.eco + '</span> ' + mark + '</a>';
 
     if (o.starter) {
       html[o.side].unshift(entry);
@@ -49,6 +72,12 @@
 
   document.getElementById('white').innerHTML = html.w.join('');
   document.getElementById('black').innerHTML = html.b.join('');
+
+  if (dueCount) {
+    var dueEl = document.getElementById('due');
+    dueEl.textContent = 'Due for review today: ' + dueCount;
+    dueEl.className = 'hint';
+  }
 })();
 </script>
 </body>

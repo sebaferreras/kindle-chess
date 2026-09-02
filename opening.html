@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <title>Chess — Opening</title>
 <script>document.documentElement.className = 'loading';</script>
-<link rel="stylesheet" href="style.css?v=15">
+<link rel="stylesheet" href="style.css?v=16">
 </head>
 <body>
 <div class="board-wrap">
@@ -16,17 +16,17 @@
 <p id="status"></p>
 <p id="note"></p>
 <p class="controls">
-  <a class="icon back" href="openings.html?v=15" title="Openings"></a>
+  <a class="icon back" href="openings.html?v=16" title="Openings"></a>
   <button id="reset" class="icon reset" title="Restart"></button>
   <button id="step" class="icon next" title="Show me"></button>
   <button id="practice">Practice</button>
   <button id="continue" class="hidden">Keep playing</button>
 </p>
 
-<script src="chess.js?v=15"></script>
-<script src="bot.js?v=15"></script>
-<script src="board.js?v=15"></script>
-<script src="openings.js?v=15"></script>
+<script src="chess.js?v=16"></script>
+<script src="bot.js?v=16"></script>
+<script src="board.js?v=16"></script>
+<script src="openings.js?v=16"></script>
 <script>
 (function () {
   'use strict';
@@ -48,7 +48,7 @@
   var continueEl = document.getElementById('continue');
   var board = new Board(boardEl, onSquareTap);
   var opening = findOpening();
-  var state, humanColor, step, history, mode, locked;
+  var state, humanColor, step, history, mode, locked, missed;
 
   function findOpening() {
     var match = /[?&]id=([\w-]+)/.exec(window.location.search);
@@ -60,7 +60,15 @@
     return null;
   }
 
-  function markDone() {
+  function pad(n) {
+    return n < 10 ? '0' + n : String(n);
+  }
+
+  function dateKey(d) {
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  function scheduleReview() {
     var done;
 
     try {
@@ -69,11 +77,20 @@
       done = {};
     }
 
-    done[opening.id] = true;
+    var prev = done[opening.id];
+    var prevInterval = prev && prev.interval ? prev.interval : 0;
+    var interval = missed ? 1 : Math.min(prevInterval * 2 || 1, 30);
+
+    done[opening.id] = {
+      interval: interval,
+      due: dateKey(new Date(Date.now() + interval * 86400000))
+    };
 
     try {
       window.localStorage.setItem(DONE_KEY, JSON.stringify(done));
     } catch (e) {}
+
+    return interval;
   }
 
   function setText(el, text) {
@@ -88,6 +105,7 @@
     history = [];
     mode = newMode;
     locked = false;
+    missed = false;
     board.select(null);
     board.mark([]);
     board.setFlipped(humanColor === 'b');
@@ -222,11 +240,18 @@
   function completeLine() {
     locked = true;
 
-    if (mode === 'line') markDone();
-
     setText(overlayEl, 'Line complete!');
     boardEl.className = 'dimmed';
-    noteEl.textContent = mode === 'learn' ? 'Now try it from memory with Practice.' : opening.description;
+
+    if (mode === 'line') {
+      var interval = scheduleReview();
+      noteEl.textContent = missed
+        ? 'Some slips — this line comes back for review tomorrow.'
+        : 'Next review in ' + interval + (interval === 1 ? ' day.' : ' days.');
+    } else {
+      noteEl.textContent = 'Now try it from memory with Practice.';
+    }
+
     continueEl.className = '';
     stepEl.className = 'hidden';
   }
@@ -323,6 +348,8 @@
 
   function showWrongMove(from, to, expected) {
     locked = true;
+
+    if (mode === 'line') missed = true;
     board.setPosition(Chess.applyMove(state, from, to).pieces);
     board.mark([from, to]);
     renderBadge('Not the main line');
