@@ -4,17 +4,17 @@
 <meta charset="utf-8">
 <title>Chess — Export</title>
 <script>document.documentElement.className = 'loading';</script>
-<link rel="stylesheet" href="style.css?v=17">
+<link rel="stylesheet" href="style.css?v=18">
 </head>
 <body>
 <h1>Export game</h1>
 <div id="qr"></div>
 <p class="hint" id="caption">Scan with your phone to open the game in Chess.com.</p>
 <p class="controls">
-  <a id="back" class="icon back" href="games.html?v=17" title="Review"></a>
+  <a id="back" class="icon back" href="games.html?v=18" title="Review"></a>
 </p>
 
-<script src="qr.js?v=17"></script>
+<script src="qr.js?v=18"></script>
 <script>
 (function () {
   'use strict';
@@ -85,9 +85,9 @@
     return;
   }
 
-  backEl.href = 'review.html?id=' + game.id + '&v=17';
+  backEl.href = 'review.html?id=' + game.id + '&v=18';
 
-  var url = 'https://www.chess.com/analysis?pgn=' + encodeURIComponent(buildPgn(game));
+  var url = 'https://www.chess.com/analysis/?pgn=' + encodeURIComponent(buildPgn(game));
   var qr = qrcode(0, 'L');
   qr.addData(url);
   qr.make();

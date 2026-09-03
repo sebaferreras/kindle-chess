@@ -3,16 +3,16 @@
 <head>
 <meta charset="utf-8">
 <title>Chess — Endgames</title>
-<link rel="stylesheet" href="style.css?v=17">
+<link rel="stylesheet" href="style.css?v=18">
 </head>
 <body>
 <h1>Endgames</h1>
 <nav id="endgames" class="menu compact"></nav>
 <p class="controls">
-  <a class="icon back" href="training.html?v=17" title="Training"></a>
+  <a class="icon back" href="training.html?v=18" title="Training"></a>
 </p>
 
-<script src="endgames.js?v=17"></script>
+<script src="endgames.js?v=18"></script>
 <script>
 (function () {
   'use strict';
@@ -32,7 +32,7 @@
   for (var i = 0; i < ENDGAMES.length; i++) {
     var e = ENDGAMES[i];
     var mark = done[e.id] ? ' ✓' : '';
-    html.push('<a href="endgame.html?id=' + e.id + '&v=17">' + e.name + mark + '</a>');
+    html.push('<a href="endgame.html?id=' + e.id + '&v=18">' + e.name + mark + '</a>');
   }
 
   document.getElementById('endgames').innerHTML = html.join('');
