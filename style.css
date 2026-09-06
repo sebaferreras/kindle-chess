@@ -298,7 +298,9 @@ button.last { background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://w
 }
 
 .credits {
-  margin-top: 2rem;
+  width: 70%;
+  max-width: 22rem;
+  margin: 2rem auto 0;
   font-size: 0.8rem;
   color: #555;
 }
